@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isMe(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+    function myUser() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+    function isAdmin() {
+      return signedIn() && myUser().rol == 'admin';
+    }
+
+    match /usuarios/{userId} {
+      allow read: if signedIn();
+      allow create: if isMe(userId);
+      allow update: if isMe(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /trabajadores/{workerId} {
+      allow read: if true;
+      allow create, update: if isMe(workerId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /hojasDeVida/{cvId} {
+      allow read: if signedIn();
+      allow write: if isMe(cvId) || isAdmin();
+    }
+
+    match /cotizaciones/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if signedIn() && (
+        request.auth.uid == resource.data.clientId ||
+        request.auth.uid == resource.data.clienteId ||
+        isAdmin()
+      );
+      allow delete: if signedIn() && (
+        request.auth.uid == resource.data.clientId || isAdmin()
+      );
+    }
+
+    match /sugerencias/{id} {
+      allow read: if signedIn() && (
+        request.auth.uid == resource.data.trabajadorId ||
+        request.auth.uid == resource.data.empleadorId ||
+        isAdmin()
+      );
+      allow create: if signedIn();
+      allow update: if signedIn() && (
+        request.auth.uid == resource.data.trabajadorId ||
+        request.auth.uid == resource.data.empleadorId ||
+        isAdmin()
+      );
+    }
+
+    match /resenas/{id} {
+      allow read: if true;
+      allow create: if signedIn();
+      allow update, delete: if signedIn() && request.auth.uid == resource.data.clienteId;
+    }
+
+    match /reportes/{id} {
+      allow create: if signedIn();
+      allow read, update, delete: if signedIn();
+    }
+
+    match /notificaciones/{id} {
+      allow read, update, delete: if signedIn() && request.auth.uid == resource.data.usuarioId;
+      allow create: if signedIn();
+    }
+
+    match /favoritos/{userId} {
+      allow read, write: if isMe(userId);
+    }
+
+    match /conversaciones/{id} {
+      allow read, write: if signedIn() && request.auth.uid in resource.data.participants;
+      allow create: if signedIn() && request.auth.uid in request.resource.data.participants;
+    }
+
+    match /mensajes/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == request.resource.data.from;
+      allow update, delete: if false;
+    }
+  }
+}

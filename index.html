@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TuOficioCol – La red de técnicos en tu zona</title>
+
+    <!-- Google Fonts: Manrope + Space Grotesk -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+    <!-- Leaflet CSS para el mapa -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Firebase CDN -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <!-- Design System Salvia -->
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/chatbot.css">
+</head>
+<body>
+
+    <!-- ── NAVBAR ── -->
+    <nav class="nav">
+        <div class="container nav-inner">
+            <a class="logo" href="#">
+                <span class="logo-mark"><i class="fa-solid fa-bolt"></i></span>
+                TuOficio<b>Col</b>
+            </a>
+            <div class="nav-links">
+                <a href="#hero">Inicio</a>
+                <a href="#como-funciona">Cómo funciona</a>
+                <a href="#zonas">Zonas</a>
+                <a href="#categorias">Categorías</a>
+            </div>
+            <div class="nav-cta">
+                <a class="btn btn-ghost" href="app.html">Ingresar</a>
+                <a class="btn btn-primary" href="app.html">Regístrate</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ── HERO · SPLIT EDITORIAL ── -->
+    <header class="hero" id="hero">
+        <div class="container hero-grid">
+            <div class="hero-copy">
+                <span class="eyebrow">Técnicos certificados en Bogotá</span>
+                <h1 class="h-display">Expertos para el hogar, a un mensaje de ti.</h1>
+                <p class="lede">Encuentra, compara y contrata plomeros, electricistas y maestros de oficio verificados de tu zona — con reseñas reales y precios transparentes.</p>
+                <div class="hero-cta">
+                    <a class="btn btn-primary" href="#zonas">Buscar un técnico <i class="fa-solid fa-arrow-right arrow"></i></a>
+                    <a class="btn btn-ghost" href="app.html">Soy trabajador</a>
+                </div>
+                <dl class="trust">
+                    <div class="trust-item">
+                        <span class="trust-ic"><i class="fa-solid fa-shield-halved"></i></span>
+                        <div><dt>4.8/5</dt><dd><span class="trust-stars">★★★★★</span></dd></div>
+                    </div>
+                    <div class="trust-item">
+                        <span class="trust-ic"><i class="fa-solid fa-user-check"></i></span>
+                        <div><dt>+4.200</dt><dd>profesionales verificados</dd></div>
+                    </div>
+                    <div class="trust-item">
+                        <span class="trust-ic"><i class="fa-solid fa-comments"></i></span>
+                        <div><dt>+32 mil</dt><dd>trabajos completados</dd></div>
+                    </div>
+                </dl>
+            </div>
+
+            <div class="hero-visual">
+                <span class="live-badge"><span class="live-dot"></span> 214 disponibles ahora</span>
+                <figure class="hero-photo">
+                    <img src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=1200" alt="Electricista certificado trabajando" onerror="this.style.opacity=0">
+                </figure>
+                <div class="float-card">
+                    <div class="float-head">
+                        <span class="float-ava">CR</span>
+                        <div>
+                            <div class="float-name">Carlos Ramírez</div>
+                            <div class="float-trade">Plomería · Chapinero</div>
+                        </div>
+                    </div>
+                    <div class="float-rate"><i class="fa-solid fa-star"></i> 4.9 · <span style="color:var(--mist);font-weight:600">23 reseñas</span></div>
+                    <div class="float-bar"><i></i></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ── ESTADÍSTICAS ── -->
+    <section class="stats">
+        <div class="container stats-grid">
+            <div class="stat"><b>98<em>%</em></b><span>Clientes satisfechos</span></div>
+            <div class="stat"><b>4.8<em>★</em></b><span>Calificación promedio</span></div>
+            <div class="stat"><b>25<em>min</em></b><span>Respuesta promedio</span></div>
+            <div class="stat"><b>+32<em>k</em></b><span>Servicios completados</span></div>
+        </div>
+    </section>
+
+    <!-- ── CÓMO FUNCIONA ── -->
+    <section class="section" id="como-funciona">
+        <div class="container">
+            <div class="sec-head reveal">
+                <div>
+                    <span class="eyebrow">Proceso simple</span>
+                    <h2 class="sec-title">Del problema a la solución en 3 pasos.</h2>
+                </div>
+                <p class="sec-sub">Sin intermediarios, sin letra pequeña: tú negocias directo con el profesional.</p>
+            </div>
+            <div class="steps">
+                <div class="step reveal">
+                    <span class="step-num">PASO 01</span>
+                    <span class="step-ic"><i class="fa-solid fa-location-crosshairs"></i></span>
+                    <h3>Busca en tu zona</h3>
+                    <p>Un mapa geolocalizado muestra solo los técnicos que trabajan en tu barrio o localidad.</p>
+                </div>
+                <div class="step reveal">
+                    <span class="step-num">PASO 02</span>
+                    <span class="step-ic"><i class="fa-solid fa-scale-balanced"></i></span>
+                    <h3>Compara y elige</h3>
+                    <p>Revisa hoja de vida, portafolio "antes y después" y reseñas reales de tus vecinos.</p>
+                </div>
+                <div class="step reveal">
+                    <span class="step-num">PASO 03</span>
+                    <span class="step-ic"><i class="fa-solid fa-handshake"></i></span>
+                    <h3>Contrata y califica</h3>
+                    <p>Acuerda el precio directo y deja una reseña que ayuda a toda tu comunidad.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── ZONAS · MAPA ── -->
+    <section class="section" id="zonas" style="padding-top:0">
+        <div class="container">
+            <div class="sec-head reveal">
+                <div>
+                    <span class="eyebrow">Cobertura local</span>
+                    <h2 class="sec-title">Expertos cerca de ti.</h2>
+                </div>
+                <p class="sec-sub">Disponibilidad en tiempo real de los técnicos activos en tu área.</p>
+            </div>
+            <div class="map-wrap reveal">
+                <div class="map-sidebar">
+                    <h3>Técnicos activos</h3>
+                    <div class="zone-stat">
+                        <div class="zone-icon"><i class="fa-solid fa-wrench"></i></div>
+                        <div class="zone-info"><h4>Plomeros</h4><p>12 disponibles ahora</p></div>
+                    </div>
+                    <div class="zone-stat">
+                        <div class="zone-icon"><i class="fa-solid fa-bolt"></i></div>
+                        <div class="zone-info"><h4>Electricistas</h4><p>8 disponibles ahora</p></div>
+                    </div>
+                    <div class="zone-stat" style="border:none">
+                        <div class="zone-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                        <div class="zone-info"><h4>100% verificados</h4><p>Antecedentes revisados</p></div>
+                    </div>
+                    <a class="btn btn-primary" style="width:100%;justify-content:center;margin-top:12px" href="buscar.html">Ver todos</a>
+                </div>
+                <div id="landing-map"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── CATEGORÍAS ── -->
+    <section class="section" id="categorias" style="padding-top:0">
+        <div class="container">
+            <div class="cat-band reveal">
+                <div class="sec-head" style="margin-bottom:32px">
+                    <div>
+                        <span class="eyebrow" style="color:#8FBF9C">Oficios disponibles</span>
+                        <h2 class="sec-title">Categorías principales</h2>
+                    </div>
+                    <p class="sec-sub">Cientos de oficios listos para ayudarte con las reparaciones y mejoras del hogar.</p>
+                </div>
+                <div class="cat-grid">
+                    <div class="cat-card" onclick="location.href='buscar.html'"><i class="fa-solid fa-wrench"></i><h4>Plomería</h4></div>
+                    <div class="cat-card" onclick="location.href='buscar.html'"><i class="fa-solid fa-bolt"></i><h4>Electricidad</h4></div>
+                    <div class="cat-card" onclick="location.href='buscar.html'"><i class="fa-solid fa-hammer"></i><h4>Carpintería</h4></div>
+                    <div class="cat-card" onclick="location.href='buscar.html'"><i class="fa-solid fa-trowel-bricks"></i><h4>Albañilería</h4></div>
+                    <div class="cat-card" onclick="location.href='buscar.html'"><i class="fa-solid fa-paint-roller"></i><h4>Pintura</h4></div>
+                    <div class="cat-card" onclick="location.href='buscar.html'"><i class="fa-solid fa-key"></i><h4>Cerrajería</h4></div>
+                    <div class="cat-card" onclick="location.href='buscar.html'"><i class="fa-solid fa-leaf"></i><h4>Jardinería</h4></div>
+                    <div class="cat-card" onclick="location.href='buscar.html'"><i class="fa-solid fa-broom"></i><h4>Limpieza</h4></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── DIRECTORIO · GRID DE PRODUCTO ── -->
+    <section class="section" id="directorio" style="padding-top:0">
+        <div class="container">
+            <div class="sec-head reveal">
+                <div>
+                    <span class="eyebrow">Directorio local</span>
+                    <h2 class="sec-title">Técnicos destacados en Bogotá.</h2>
+                </div>
+                <p class="sec-sub">Perfiles verificados, precios desde visita y respuesta en minutos.</p>
+            </div>
+            <div class="catalog reveal">
+                <div class="workers-grid">
+                    <article class="pcard" onclick="location.href='buscar.html'">
+                        <div class="pcard-media">
+                            <img src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=700" alt="Electricista" onerror="this.style.opacity=0">
+                            <span class="pcard-ava" style="background:var(--sage)">CR</span>
+                            <span class="pcard-verify"><i class="fa-solid fa-shield"></i> Verificado</span>
+                        </div>
+                        <div class="pcard-body">
+                            <div class="pcard-name">Carlos Ramírez</div>
+                            <div class="pcard-trade">Electricidad · 8 años</div>
+                            <div class="pcard-score"><span class="stars">★★★★★</span><b>4.9</b><span>(23)</span></div>
+                            <div class="pcard-foot">
+                                <div class="pcard-price">Desde $45.000 <small>visita</small></div>
+                                <span class="avail on"><span class="dot"></span> Disponible</span>
+                            </div>
+                            <span class="pcard-cta">Ver perfil <i class="fa-solid fa-arrow-right"></i></span>
+                        </div>
+                    </article>
+
+                    <article class="pcard" onclick="location.href='buscar.html'">
+                        <div class="pcard-media">
+                            <img src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=700" alt="Profesional de limpieza" onerror="this.style.opacity=0">
+                            <span class="pcard-ava" style="background:var(--sage-deep)">DP</span>
+                            <span class="pcard-verify"><i class="fa-solid fa-shield"></i> Verificado</span>
+                        </div>
+                        <div class="pcard-body">
+                            <div class="pcard-name">Daniela Pérez</div>
+                            <div class="pcard-trade">Limpieza profunda · 5 años</div>
+                            <div class="pcard-score"><span class="stars">★★★★☆</span><b>4.7</b><span>(41)</span></div>
+                            <div class="pcard-foot">
+                                <div class="pcard-price">Desde $30.000 <small>visita</small></div>
+                                <span class="avail on"><span class="dot"></span> Disponible</span>
+                            </div>
+                            <span class="pcard-cta">Ver perfil <i class="fa-solid fa-arrow-right"></i></span>
+                        </div>
+                    </article>
+
+                    <article class="pcard" onclick="location.href='buscar.html'">
+                        <div class="pcard-media">
+                            <img src="https://images.unsplash.com/photo-1530124566582-a618bc2615dc?q=80&w=700" alt="Carpintero" onerror="this.style.opacity=0">
+                            <span class="pcard-ava" style="background:var(--sage-hover)">JG</span>
+                        </div>
+                        <div class="pcard-body">
+                            <div class="pcard-name">Julián Gómez</div>
+                            <div class="pcard-trade">Carpintería · 12 años</div>
+                            <div class="pcard-score"><span class="stars">★★★★★</span><b>5.0</b><span>(18)</span></div>
+                            <div class="pcard-foot">
+                                <div class="pcard-price">Desde $65.000 <small>visita</small></div>
+                                <span class="avail part"><span class="dot"></span> Medio tiempo</span>
+                            </div>
+                            <span class="pcard-cta">Ver perfil <i class="fa-solid fa-arrow-right"></i></span>
+                        </div>
+                    </article>
+
+                    <article class="pcard" onclick="location.href='buscar.html'">
+                        <div class="pcard-media">
+                            <img src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=700" alt="Técnica" onerror="this.style.opacity=0">
+                            <span class="pcard-ava" style="background:var(--leaf)">MG</span>
+                        </div>
+                        <div class="pcard-body">
+                            <div class="pcard-name">Marta Gutiérrez</div>
+                            <div class="pcard-trade">Pintura y acabados · 6 años</div>
+                            <div class="pcard-score"><span class="stars">★★★★★</span><b>4.8</b><span>(29)</span></div>
+                            <div class="pcard-foot">
+                                <div class="pcard-price">Desde $55.000 <small>visita</small></div>
+                                <span class="avail on"><span class="dot"></span> Disponible</span>
+                            </div>
+                            <span class="pcard-cta">Ver perfil <i class="fa-solid fa-arrow-right"></i></span>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── CTA FINAL ── -->
+    <section class="section" id="cta" style="padding-top:0">
+        <div class="container">
+            <div class="cta-band reveal">
+                <div>
+                    <span class="eyebrow" style="color:#8FBF9C">Únete hoy</span>
+                    <h2 class="h-display">¿Eres profesional? Haz crecer tu oficio.</h2>
+                    <p class="lede">Publica tu perfil, recibe clientes de tu zona y construye tu reputación con reseñas reales.</p>
+                </div>
+                <div class="cta-wrap">
+                    <a class="btn btn-primary cta-apply" href="app.html">Crear mi perfil gratis <i class="fa-solid fa-arrow-right arrow"></i></a>
+                    <a class="btn btn-ghost-dark" href="#como-funciona">Cómo funciona</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── MODAL AUTH ── -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeAuthModal()"><i class="fa-solid fa-xmark"></i></button>
+            <h2 id="modal-title">Bienvenido</h2>
+            <p class="sub" id="modal-subtitle">Inicia sesión para contratar técnicos</p>
+            <button class="btn-google" onclick="loginGoogle()">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+                Continuar con Google
+            </button>
+            <div class="divider">O usa tu correo</div>
+            <form id="auth-form" onsubmit="event.preventDefault(); alert('Configura EmailJS en auth.js');">
+                <div id="role-selection" style="display:none">
+                    <p style="text-align:left;font-size:12.5px;font-weight:700;color:var(--ink-2);margin-bottom:8px">¿Cómo quieres usar la plataforma?</p>
+                    <div class="role-selector">
+                        <input type="radio" id="role-client" name="userRole" value="cliente" checked>
+                        <label for="role-client" class="role-label"><i class="fa-solid fa-user"></i> Cliente</label>
+                        <input type="radio" id="role-worker" name="userRole" value="trabajador">
+                        <label for="role-worker" class="role-label"><i class="fa-solid fa-wrench"></i> Técnico</label>
+                    </div>
+                </div>
+                <input type="email" class="form-input" placeholder="Correo electrónico" required>
+                <input type="password" class="form-input" placeholder="Contraseña" required>
+                <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:14px;border-radius:var(--r-sm)" id="modal-submit-btn">Ingresar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── FOOTER ── -->
+    <footer class="footer">
+        <div class="container footer-inner">
+            <a class="logo" href="#">
+                <span class="logo-mark"><i class="fa-solid fa-bolt"></i></span>
+                TuOficio<b>Col</b>
+            </a>
+            <div class="footer-links">
+                <a href="#como-funciona">Cómo funciona</a>
+                <a href="#directorio">Directorio</a>
+                <a href="#">Soporte</a>
+            </div>
+            <small>© 2026 TuOficioCol · Bogotá, Colombia</small>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/chatbot-data.js"></script>
+    <script src="js/chatbot.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        /* Reveal on scroll */
+        const io = new IntersectionObserver((entries)=>{
+            entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+        },{threshold:.12});
+        document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+        /* MODAL AUTH */
+        const modal = document.getElementById('authModal');
+        const roleSel = document.getElementById('role-selection');
+        const mTitle = document.getElementById('modal-title');
+        const mSub = document.getElementById('modal-subtitle');
+        const mBtn = document.getElementById('modal-submit-btn');
+        function openAuthModal(mode, rolePref = 'cliente') {
+            modal.classList.add('active');
+            if(mode === 'register') {
+                mTitle.textContent = 'Crear Cuenta';
+                mSub.textContent = 'Únete a la comunidad TuOficioCol';
+                roleSel.style.display = 'block';
+                mBtn.textContent = 'Registrarme';
+                if(rolePref === 'trabajador') document.getElementById('role-worker').checked = true;
+            } else {
+                mTitle.textContent = 'Bienvenido de nuevo';
+                mSub.textContent = 'Inicia sesión para continuar';
+                roleSel.style.display = 'none';
+                mBtn.textContent = 'Ingresar';
+            }
+        }
+        function closeAuthModal() { modal.classList.remove('active'); }
+        async function loginGoogle() {
+            if (window.Auth && window.Auth.signInWithGoogle) {
+                try { await window.Auth.signInWithGoogle(); }
+                catch(e) { console.error(e); alert("Error al iniciar sesión. (Configura Firebase en js/firebase-config.js)"); }
+            } else { alert("El módulo de autenticación no está cargado."); }
+        }
+
+        /* MAPA LEAFLET */
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                try {
+                    const map = L.map('landing-map').setView([4.6097, -74.0817], 12);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+                    const iconPlomero = L.divIcon({ html: '<div style="background:#4E7A5C;color:white;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,0,0,0.3);border:2px solid white;"><i class="fa-solid fa-wrench"></i></div>', className: '' });
+                    const iconElec = L.divIcon({ html: '<div style="background:#33503E;color:white;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,0,0,0.3);border:2px solid white;"><i class="fa-solid fa-bolt"></i></div>', className: '' });
+                    L.marker([4.6280, -74.1510], {icon: iconPlomero}).addTo(map);
+                    L.marker([4.6486, -74.0628], {icon: iconElec}).addTo(map);
+                    L.marker([4.7057, -74.1120], {icon: iconPlomero}).addTo(map);
+                    L.marker([4.6715, -74.1459], {icon: iconElec}).addTo(map);
+                    map.scrollWheelZoom.disable();
+                } catch(e) { console.warn('Mapa no disponible:', e); }
+            }, 500);
+        });
+    </script>
+</body>
+</html>

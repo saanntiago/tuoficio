@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Cliente - TuOficioCol</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/chatbot.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body class="dashboard-layout">
+    
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2 class="logo text-white">TuOficioCol</h2>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="sidebar-item active" data-section="inicio">🏠 Inicio</li>
+            <li class="sidebar-item" data-section="buscar">🔍 Buscar Técnicos</li>
+            <li class="sidebar-item" data-section="cotizaciones">📋 Mis Cotizaciones</li>
+            <li class="sidebar-item" data-section="favoritos">⭐ Favoritos</li>
+            <li class="sidebar-item" data-section="mensajes">💬 Mensajes</li>
+            <li class="sidebar-item" data-section="perfil">👤 Mi Perfil</li>
+            <li class="sidebar-item" data-section="config">⚙️ Configuración</li>
+        </ul>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <img src="assets/default-avatar.png" class="avatar" id="sidebar-avatar" alt="User">
+                <div>
+                    <strong id="sidebar-name" class="text-white">Cargando...</strong>
+                    <span class="text-sm text-secondary">Cliente</span>
+                </div>
+            </div>
+            <button class="btn btn-outline btn-full mt-3" onclick="window.Auth.signOut()">Cerrar Sesión</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="header">
+            <div class="menu-toggle d-mobile">☰</div>
+            <div class="search-bar">
+                <input type="text" class="form-control" placeholder="Buscar servicios o técnicos...">
+            </div>
+            <div class="header-actions">
+                <div class="notification-wrapper">
+                    <span>🔔</span>
+                    <span class="notification-badge">3</span>
+                </div>
+                <img src="assets/default-avatar.png" class="avatar ml-3" id="header-avatar" alt="User">
+            </div>
+        </header>
+
+        <div class="content-area">
+            <!-- Welcome -->
+            <div class="welcome-banner mb-4">
+                <h1 id="welcome-text">Bienvenido, ...</h1>
+                <p id="current-date" class="text-secondary"></p>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid mb-4">
+                <div class="stat-card">
+                    <div class="stat-icon bg-primary-light text-primary">🛠️</div>
+                    <div>
+                        <h3 class="stat-value" id="stat-servicios">0</h3>
+                        <p class="stat-label">Servicios Contratados</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-warning text-dark">📋</div>
+                    <div>
+                        <h3 class="stat-value" id="stat-cotizaciones">0</h3>
+                        <p class="stat-label">Cotizaciones Activas</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-danger text-white">⭐</div>
+                    <div>
+                        <h3 class="stat-value" id="stat-favoritos">0</h3>
+                        <p class="stat-label">Técnicos Favoritos</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-success text-white">📝</div>
+                    <div>
+                        <h3 class="stat-value" id="stat-resenas">0</h3>
+                        <p class="stat-label">Reseñas Escritas</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recommended Workers -->
+            <section class="mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2>Técnicos Recomendados</h2>
+                    <a href="#" class="text-primary">Ver todos</a>
+                </div>
+                <div class="horizontal-scroll-container" id="recommended-workers">
+                    <!-- Cards will be injected by JS -->
+                    <div class="skeleton" style="width: 250px; height: 300px; border-radius: var(--radius)"></div>
+                    <div class="skeleton" style="width: 250px; height: 300px; border-radius: var(--radius)"></div>
+                </div>
+            </section>
+
+            <!-- Map Section -->
+            <section class="mb-4">
+                <h2>Técnicos Cerca de Ti</h2>
+                <div class="card p-0">
+                    <div id="map" style="height: 400px; width: 100%; border-radius: var(--radius)"></div>
+                </div>
+            </section>
+
+            <!-- Recent Quotes -->
+            <section class="mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2>Mis Cotizaciones Recientes</h2>
+                    <button class="btn btn-primary" onclick="openQuoteModal()">+ Nueva Cotización</button>
+                </div>
+                <div class="card p-0">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Categoría</th>
+                                    <th>Presupuesto</th>
+                                    <th>Estado</th>
+                                    <th>Ofertas</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="quotes-table-body">
+                                <tr><td colspan="6" class="text-center py-4 skeleton-text">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- FAB for mobile -->
+    <button class="fab btn-primary" onclick="openQuoteModal()">+</button>
+
+    <!-- Modal Cotizacion -->
+    <div id="quote-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Publicar Nueva Cotización</h3>
+                <button class="close-modal" onclick="closeQuoteModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="quote-form">
+                    <div class="form-group">
+                        <label class="form-label">Título del Servicio</label>
+                        <input type="text" id="quote-title" class="form-control" required placeholder="Ej. Reparación de tubería">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Categoría</label>
+                        <select id="quote-category" class="form-control" required>
+                            <option value="Plomería">Plomería</option>
+                            <option value="Electricidad">Electricidad</option>
+                            <option value="Carpintería">Carpintería</option>
+                            <option value="Limpieza">Limpieza</option>
+                            <!-- add others -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Descripción</label>
+                        <textarea id="quote-desc" class="form-control" rows="4" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Presupuesto Estimado ($)</label>
+                        <input type="number" id="quote-budget" class="form-control">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full mt-3">Publicar Cotización</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/db.js"></script>
+    <script src="js/dashboard-cliente.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dateStr = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('current-date').textContent = dateStr;
+            
+            // Check auth
+            firebase.auth().onAuthStateChanged((user) => {
+                if(!user) {
+                    window.location.href = 'index.html';
+                } else {
+                    if(window.DashboardCliente) window.DashboardCliente.init(user);
+                }
+            });
+        });
+
+        function openQuoteModal() { document.getElementById('quote-modal').style.display = 'flex'; }
+        function closeQuoteModal() { document.getElementById('quote-modal').style.display = 'none'; }
+    </script>
+</body>
+</html>

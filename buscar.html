@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscar Técnicos - TuOficioCol</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+<body class="bg-light">
+
+    <nav class="navbar bg-white shadow-sm sticky-top">
+        <div class="nav-container w-100 d-flex align-items-center">
+            <a href="index.html" class="logo mr-4">TuOficioCol</a>
+            <div class="search-bar flex-grow-1 mx-4 max-w-lg">
+                <input type="text" class="form-control" placeholder="¿Qué necesitas? (Ej. Plomero en Chapinero)">
+            </div>
+            <a href="dashboard-cliente.html" class="btn btn-outline btn-sm">Mi Cuenta</a>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-3">
+        <div class="row">
+            <!-- Filters -->
+            <div class="col-md-3">
+                <div class="card p-3 mb-4">
+                    <h4 class="mb-3">Filtros</h4>
+                    
+                    <div class="form-group mb-3">
+                        <label class="form-label">Categoría</label>
+                        <select class="form-control">
+                            <option value="">Todas</option>
+                            <option value="Plomería">Plomería</option>
+                            <option value="Electricidad">Electricidad</option>
+                            <option value="Limpieza">Limpieza</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label class="form-label">Zona</label>
+                        <input type="text" class="form-control" placeholder="Ej. Suba, Teusaquillo">
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label class="form-label">Calificación Mínima</label>
+                        <select class="form-control">
+                            <option value="0">Cualquiera</option>
+                            <option value="4">4 Estrellas o más</option>
+                            <option value="4.5">4.5 Estrellas o más</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label class="d-flex align-items-center">
+                            <input type="checkbox" class="mr-2"> Solo verificados
+                        </label>
+                    </div>
+
+                    <button class="btn btn-primary btn-full">Aplicar Filtros</button>
+                    <button class="btn btn-outline btn-full mt-2 border-0">Limpiar</button>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div class="col-md-9">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="mb-0">Resultados <span class="text-secondary text-sm font-weight-normal">(Mostrando 10)</span></h2>
+                    <div>
+                        <select class="form-control form-control-sm d-inline-block w-auto">
+                            <option>Recomendados</option>
+                            <option>Mejor Calificados</option>
+                            <option>Más Cercanos</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Tabs Map/List -->
+                <ul class="nav nav-tabs mb-3 d-flex" style="list-style:none; padding:0; border-bottom:1px solid var(--border)">
+                    <li style="margin-right:20px;"><a href="#" class="text-primary font-weight-bold" style="text-decoration:none; border-bottom:2px solid var(--primary); padding-bottom:5px; display:block;">Vista Lista</a></li>
+                    <li><a href="#" class="text-secondary" style="text-decoration:none;">Vista Mapa</a></li>
+                </ul>
+
+                <!-- Grid -->
+                <div class="row" id="search-results">
+                    <!-- Skeletons -->
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 p-3">
+                            <div class="skeleton" style="height:100px; width:100px; border-radius:50%; margin:0 auto 15px;"></div>
+                            <div class="skeleton-text mb-2"></div>
+                            <div class="skeleton-text w-50 mx-auto"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 p-3">
+                            <div class="skeleton" style="height:100px; width:100px; border-radius:50%; margin:0 auto 15px;"></div>
+                            <div class="skeleton-text mb-2"></div>
+                            <div class="skeleton-text w-50 mx-auto"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4 mb-5">
+                    <button class="btn btn-outline">Cargar más resultados</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const container = document.getElementById('search-results');
+            try {
+                const snap = await db.collection('trabajadores').limit(6).get();
+                container.innerHTML = '';
+                
+                if(snap.empty) {
+                    container.innerHTML = '<div class="col-12"><p>No se encontraron resultados.</p></div>';
+                    return;
+                }
+
+                snap.forEach(doc => {
+                    const w = doc.data();
+                    container.innerHTML += `
+                        <div class="col-md-4 mb-4">
+                            <div class="worker-card card h-100 p-3 text-center transition hover-shadow">
+                                <img src="${w.foto || 'assets/default-avatar.png'}" class="avatar avatar-lg mx-auto mb-3" style="width:80px;height:80px;">
+                                <h4 class="mb-1">${w.nombre || 'Trabajador'}</h4>
+                                <p class="text-primary text-sm font-weight-bold mb-2">${w.oficio}</p>
+                                <div class="text-warning mb-2">⭐ ${w.calificacionPromedio || '0.0'}</div>
+                                <div class="mt-auto">
+                                    <a href="perfil-trabajador.html?id=${doc.id}" class="btn btn-primary btn-full btn-sm">Ver Perfil</a>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch(e) {
+                console.error(e);
+                container.innerHTML = '<div class="col-12"><p>Error al cargar resultados.</p></div>';
+            }
+        });
+    </script>
+</body>
+</html>

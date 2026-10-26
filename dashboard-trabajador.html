@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Trabajador - TuOficioCol</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/components.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body class="dashboard-layout worker-theme">
+    
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2 class="logo text-white">TuOficioCol Pro</h2>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="sidebar-item active">🏠 Inicio</li>
+            <li class="sidebar-item">📊 Estadísticas</li>
+            <li class="sidebar-item">📋 Solicitudes</li>
+            <li class="sidebar-item">📸 Portafolio</li>
+            <li class="sidebar-item">👤 Mi Perfil</li>
+            <li class="sidebar-item">🗺️ Zona de Cobertura</li>
+            <li class="sidebar-item">💬 Mensajes</li>
+            <li class="sidebar-item">⭐ Mis Reseñas</li>
+            <li class="sidebar-item">⚙️ Configuración</li>
+        </ul>
+        <div class="sidebar-footer">
+            <button class="btn btn-outline btn-full text-white" onclick="window.Auth.signOut()">Cerrar Sesión</button>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="header">
+            <div class="menu-toggle d-mobile">☰</div>
+            
+            <div class="availability-toggle switch-container">
+                <span class="mr-2 font-weight-bold">Estado:</span>
+                <select id="worker-status" class="form-control" style="width:auto; display:inline-block;" onchange="updateStatus(this.value)">
+                    <option value="disponible">🟢 Disponible</option>
+                    <option value="ocupado">🔴 Ocupado</option>
+                    <option value="parcial">🟡 Medio Tiempo</option>
+                </select>
+            </div>
+
+            <div class="header-actions">
+                <span>🔔</span>
+                <img src="assets/default-avatar.png" class="avatar ml-3" id="worker-avatar">
+            </div>
+        </header>
+
+        <div class="content-area">
+            <h1 class="mb-4">Panel de Control</h1>
+
+            <!-- Stats -->
+            <div class="stats-grid mb-4">
+                <div class="stat-card">
+                    <div class="stat-icon bg-warning text-dark">⭐</div>
+                    <div>
+                        <h3 class="stat-value" id="stat-rating">0.0</h3>
+                        <p class="stat-label">Calificación Promedio</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-primary text-white">📝</div>
+                    <div>
+                        <h3 class="stat-value" id="stat-reviews">0</h3>
+                        <p class="stat-label">Total Reseñas</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-success text-white">✅</div>
+                    <div>
+                        <h3 class="stat-value" id="stat-completed">0</h3>
+                        <p class="stat-label">Trabajos Completados</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-info text-white">👁️</div>
+                    <div>
+                        <h3 class="stat-value" id="stat-views">0</h3>
+                        <p class="stat-label">Perfil Visto</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <!-- Chart -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h3>Ingresos Mensuales</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="earningsChart" height="100"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- New Requests -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h3>Solicitudes Nuevas</h3>
+                        </div>
+                        <div class="card-body" id="incoming-requests">
+                            <p class="text-secondary text-center">Buscando solicitudes...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <!-- Quick Actions -->
+                    <div class="card mb-4">
+                        <div class="card-header"><h3>Acciones Rápidas</h3></div>
+                        <div class="card-body d-flex flex-column gap-2">
+                            <button class="btn btn-outline" onclick="openProfileEdit()">Editar Perfil</button>
+                            <button class="btn btn-outline" onclick="openPortfolioModal()">Subir al Portafolio</button>
+                            <button class="btn btn-primary" onclick="shareProfile()">Compartir Perfil</button>
+                        </div>
+                    </div>
+
+                    <!-- Profile Preview -->
+                    <div class="card text-center mb-4">
+                        <img src="assets/default-avatar.png" class="avatar avatar-lg mx-auto mb-3" id="preview-avatar" style="width: 80px; height: 80px;">
+                        <h3 id="preview-name">Cargando...</h3>
+                        <p class="text-secondary" id="preview-trade">Oficio</p>
+                        <div class="badge badge-verified mx-auto mb-3">✓ Verificado</div>
+                        <a href="#" class="btn btn-outline btn-full btn-sm">Ver como cliente</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/db.js"></script>
+    <script src="js/dashboard-trabajador.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            firebase.auth().onAuthStateChanged((user) => {
+                if(!user) window.location.href = 'index.html';
+                else if(window.DashboardTrabajador) window.DashboardTrabajador.init(user);
+            });
+        });
+
+        function updateStatus(val) {
+            if(window.DashboardTrabajador) window.DashboardTrabajador.toggleAvailability(val);
+        }
+        function openProfileEdit() { alert("Modal editar perfil"); }
+        function openPortfolioModal() { alert("Modal portafolio"); }
+        function shareProfile() { alert("Compartir URL"); }
+    </script>
+</body>
+</html>

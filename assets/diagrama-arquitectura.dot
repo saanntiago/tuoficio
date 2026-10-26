@@ -1,0 +1,121 @@
+digraph ChambaYa {
+  rankdir=LR;
+  bgcolor="#F7F6F2";
+  margin=20;
+  nodesep=0.55;
+  ranksep=0.9;
+  graph [pad="0.25", fontname="Helvetica", fontsize=12, fontcolor="#21201C", fontsize=13, center=true];
+  node  [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=11,
+         color="#4E7A5C", fontcolor="#21201C", fillcolor="#FFFFFF", penwidth=1.2];
+  edge  [color="#6E6B64", fontname="Helvetica", fontsize=9, fontcolor="#3A3833", arrowsize=0.7];
+
+  /* ───── HTML · puntos de entrada ───── */
+  apphtml  [label="app.html  (SPA)",  shape=component, fillcolor="#E8E4DC", penwidth=1.5];
+  index    [label="index.html  (landing)", shape=component, fillcolor="#E8E4DC", penwidth=1.5];
+  buscar   [label="buscar.html  (directorio)", shape=component, fillcolor="#E8E4DC"];
+  dcli     [label="dashboard-cliente.html", shape=component, fillcolor="#E8E4DC"];
+  dtra     [label="dashboard-trabajador.html", shape=component, fillcolor="#E8E4DC"];
+  dadmin   [label="dashboard-admin.html", shape=component, fillcolor="#E8E4DC"];
+  perfil   [label="perfil-trabajador.html", shape=component, fillcolor="#E8E4DC"];
+
+  /* ───── SPA: core ───── */
+  subgraph cluster_spa {
+    label="   Arquitectura A · SPA";
+    labeljust=l;
+    style="rounded, dashed";
+    color="#4E7A5C";
+    penwidth=1.5;
+    fontcolor="#33503E";
+    app   [label="core/App.js\ninyección de dependencias", fillcolor="#E3EBE4"];
+    ui    [label="ui/UIManager.js\nmonta todo el UI y el chatbot"];
+    pages [label="pages/Pages.js\nBasePage + 13 páginas"];
+    bot   [label="chatbot/Chatbot.js"];
+    ds    [label="services/DatabaseService.js"];
+    as    [label="services/AuthService.js"];
+    dom   [label="services/DomainServices.js\nWorker·Quote·Message·Notification·Zone"];
+    cfg   [label="config/firebase-config.js\nFIREBASE_CONFIG → initFirebase()", fillcolor="#E3EBE4"];
+    cnst  [label="config/constants.js\nCHAMBAYA + helpers", fillcolor="#E3EBE4"];
+  }
+
+  subgraph cluster_legacy {
+    label="   Arquitectura B · multipágina";
+    labeljust=l;
+    style="rounded, dashed";
+    color="#33503E";
+    penwidth=1.5;
+    fontcolor="#33503E";
+    fbc  [label="js/firebase-config.js (legacy)\n→ window.ChambaDB/Auth/Storage", fillcolor="#E3EBE4"];
+    authl [label="js/auth.js\n→ window.Auth"];
+    dbl   [label="js/db.js\n→ window.DB"];
+    chatl [label="js/chatbot.js\nred neuronal en carga"];
+    chatdl[label="js/chatbot-data.js\n→ window.ChatBotData"];
+    utils [label="js/utils.js"];
+    notif [label="js/notifications.js"];
+    dadm  [label="js/dashboard-admin.js"];
+    dt    [label="js/dashboard-trabajador.js"];
+    dc    [label="js/dashboard-cliente.js"];
+  }
+
+  subgraph cluster_css {
+    label="   Design System Salvia (dos stacks paralelos)";
+    labeljust=l;
+    style="rounded, dashed";
+    color="#B8914A";
+    penwidth=1.5;
+    fontcolor="#8A6D2F";
+    ds   [label="design-system.css\nfuente visual nueva", fillcolor="#E8E4DC"];
+    main [label="main.css\ntokens remapeados"];
+    comp [label="components.css"];
+    dash [label="dashboard.css"];
+    appcss [label="app.css\ntokens remapeados a Salvia", fillcolor="#E8E4DC"];
+    authcss [label="auth.css"];
+  }
+
+  subgraph cluster_fb {
+    label="   Infraestructura Firebase Hosting";
+    labeljust=l;
+    style="rounded, dashed";
+    color="#9A958C";
+    fontcolor="#6E6B64";
+    hosting [label="firebase.json", shape=folder, fillcolor="#E8E4DC"];
+    frules  [label="firestore.rules", shape=folder, fillcolor="#E8E4DC"];
+    srules  [label="storage.rules", shape=folder, fillcolor="#E8E4DC"];
+    fidx    [label="firestore.indexes.json", shape=folder, fillcolor="#E8E4DC"];
+  }
+
+  /* ───── SPA relationships ───── */
+  apphtml -> {cfg cnst} [style=dashed, label="  <script>"];
+  apphtml -> app [label="  boot", color="#4E7A5C", penwidth=1.6];
+  app -> ds        [label="new", color="#4E7A5C"];
+  app -> as        [label="new(db)", color="#4E7A5C"];
+  app -> dom       [label="new(db)×5", color="#4E7A5C"];
+  app -> ui        [label="new(app)", color="#4E7A5C", penwidth=1.6];
+  ui -> pages      [color="#4E7A5C"];
+  ui -> bot        [style=dashed, label="new Chatbot", color="#4E7A5C"];
+  as -> ds;
+  dom -> ds;
+  cfg -> ds [style=dotted, label="firestore", color="#6E6B64"];
+  cnst -> dom [style=dotted];
+
+  /* ───── legacy relationships ───── */
+  {index; buscar; dcli; dtra; dadmin; perfil} -> fbc [style=dashed, label="  <script>"];
+  fbc -> {authl dbl} [color="#33503E"];
+  index -> {chatdl chatl} [color="#33503E"];
+  dadmin -> {utils notif chatdl chatl dadm} [color="#33503E"];
+  dtra -> dt [color="#33503E"];
+  dcli -> dc [color="#33503E"];
+  perfil -> dbl [color="#33503E"];
+
+  /* ───── CSS ───── */
+  index -> ds [color="#B8914A"];
+  {buscar; dcli; dtra; dadmin; perfil} -> ds [color="#B8914A"];
+  ds -> main [color="#B8914A", style=bold];
+  main -> comp [color="#B8914A"];
+  dash -> {dcli; dtra; dadmin} [style=dotted, color="#B8914A"];
+  apphtml -> appcss [color="#B8914A"];
+  appcss -> authcss [style=dotted, color="#B8914A"];
+
+  /* ───── infra ───── */
+  fbc -> {frules; srules; fidx} [style=dotted, color="#6E6B64"];
+  hosting -> {index; buscar; apphtml; dcli; dtra; dadmin; perfil} [style=dotted, color="#6E6B64", label="  public"];
+}

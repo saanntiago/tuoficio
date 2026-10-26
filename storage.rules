@@ -1,0 +1,32 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isImageOrVideo() {
+      return request.resource.contentType.matches('image/.*') || request.resource.contentType.matches('video/.*');
+    }
+
+    function isValidSize() {
+      return (request.resource.contentType.matches('image/.*') && request.resource.size < 5 * 1024 * 1024) || 
+             (request.resource.contentType.matches('video/.*') && request.resource.size < 20 * 1024 * 1024);
+    }
+
+    match /users/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isOwner(userId) && isImageOrVideo() && isValidSize();
+    }
+    
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isImageOrVideo() && isValidSize();
+    }
+  }
+}

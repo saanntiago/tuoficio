@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TuOficioCol — Entrar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+  <div id="setupBanner" class="setup-banner hidden">
+    <i class="fas fa-key"></i>
+    <div>
+      <strong>Firebase no está configurado.</strong>
+      Pega tu <code>firebaseConfig</code> en <code>js/config/firebase-config.js</code>.
+      En la consola: Authentication → Google (habilitar) → Authorized domains (localhost).
+      Firestore → crear base y publicar <code>firestore.rules</code>.
+      No hay un token secreto de Google en el navegador: el ID token lo emite Google al iniciar sesión.
+    </div>
+  </div>
+
+  <div id="authScreen" class="auth-screen">
+    <div class="auth-bg-shapes"><span></span><span></span><span></span></div>
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="auth-logo-icon"><i class="fas fa-bolt"></i></div>
+        <h1>TuOficioCol</h1>
+        <p>Trabajadores y empleadores, por barrio</p>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login" onclick="ui.switchTab('login')">Ingresar</button>
+        <button class="auth-tab" data-tab="register" onclick="ui.switchTab('register')">Registrarse</button>
+      </div>
+
+      <button type="button" class="google-btn" onclick="ui.doGoogleLogin()">
+        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.2 6.1 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/>
+          <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 12 24 12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.2 6.1 29.4 4 24 4 16.3 4 9.6 8.3 6.3 14.7z"/>
+          <path fill="#4CAF50" d="M24 44c5.2 0 10-2 13.6-5.2l-6.3-5.3C29.2 35.1 26.7 36 24 36c-5.3 0-9.7-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
+          <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1.1 3.1-3.5 5.6-6.7 7.1l6.3 5.3C37.9 38.3 44 33 44 24c0-1.3-.1-2.7-.4-3.5z"/>
+        </svg>
+        Continuar con Google
+      </button>
+      <div class="divider">o con correo</div>
+
+      <form id="loginForm" onsubmit="event.preventDefault(); ui.doLogin();">
+        <div class="form-error" id="loginError" style="display:none"></div>
+        <div class="form-group">
+          <label>Correo</label>
+          <input class="form-input" id="loginEmail" type="email" autocomplete="email" required>
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input class="form-input" id="loginPassword" type="password" autocomplete="current-password" required>
+        </div>
+        <div class="form-row-spread">
+          <span></span>
+          <a class="link" onclick="ui.showForgotPassword()">Olvidé mi contraseña</a>
+        </div>
+        <button class="btn btn-primary btn-full" id="loginBtn" type="submit">
+          <i class="fas fa-sign-in-alt"></i> Iniciar sesión
+        </button>
+      </form>
+
+      <form id="registerForm" style="display:none" onsubmit="event.preventDefault(); ui.doRegister();">
+        <div class="form-error" id="registerError" style="display:none"></div>
+        <p class="field-label">¿Cómo vas a usar TuOficioCol?</p>
+        <div class="role-selector">
+          <div class="role-btn worker active" onclick="ui.selectRole('trabajador', this)">
+            <i class="fas fa-hard-hat"></i>
+            <span>Trabajador</span>
+          </div>
+          <div class="role-btn client" onclick="ui.selectRole('cliente', this)">
+            <i class="fas fa-briefcase"></i>
+            <span>Empleador</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre</label><input class="form-input" id="regName" required></div>
+          <div class="form-group"><label>Apellido</label><input class="form-input" id="regLast" required></div>
+        </div>
+        <div class="form-group"><label>Correo</label><input class="form-input" id="regEmail" type="email" required></div>
+        <div class="form-group"><label>Contraseña</label><input class="form-input" id="regPass" type="password" minlength="6" required></div>
+        <div class="form-group">
+          <label>Zona / localidad</label>
+          <select class="form-input" id="regZone"></select>
+        </div>
+        <div class="form-group" id="tradeField">
+          <label>Oficio</label>
+          <select class="form-input" id="regTrade"></select>
+        </div>
+        <button class="btn btn-primary btn-full" id="registerBtn" type="submit">
+          <i class="fas fa-user-plus"></i> Crear cuenta gratis
+        </button>
+        <p class="terms-text">Al registrarte aceptas el uso de Firebase Auth y Firestore para tu perfil y coincidencias por zona.</p>
+      </form>
+
+      <form id="forgotForm" style="display:none" onsubmit="event.preventDefault(); ui.doForgotPassword();">
+        <div class="form-group">
+          <label>Correo de recuperación</label>
+          <input class="form-input" id="forgotEmail" type="email" required>
+        </div>
+        <p id="forgotMsg" class="terms-text" style="display:none;color:#059669"></p>
+        <button class="btn btn-primary btn-full" type="submit">Enviar enlace</button>
+        <p class="terms-text"><a class="link" onclick="ui.switchTab('login')">Volver</a></p>
+      </form>
+    </div>
+  </div>
+
+  <div id="appScreen" class="app-screen hidden">
+    <header class="app-header" id="appHeader"></header>
+    <div class="app-body">
+      <aside class="sidebar" id="sidebar"></aside>
+      <main class="main-content" id="mainContent"></main>
+    </div>
+    <div class="notif-panel" id="notifPanel"></div>
+  </div>
+
+  <button class="chatbot-fab hidden" id="chatbotFab" onclick="ui.toggleChatbot()" title="TuOficioBot">
+    <i class="fas fa-robot" id="chatbotIcon"></i>
+  </button>
+  <div class="chatbot-window" id="chatbotWindow"></div>
+  <div id="modalContainer"></div>
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script src="js/config/constants.js"></script>
+  <script src="js/config/firebase-config.js"></script>
+  <script src="js/services/DatabaseService.js"></script>
+  <script src="js/services/AuthService.js"></script>
+  <script src="js/services/DomainServices.js"></script>
+  <script src="js/chatbot/Chatbot.js"></script>
+  <script src="js/pages/Pages.js"></script>
+  <script src="js/ui/UIManager.js"></script>
+  <script src="js/core/App.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const zone = document.getElementById('regZone');
+      const trade = document.getElementById('regTrade');
+      if (zone) zone.innerHTML = CHAMBAYA.ZONES.map(z => `<option value="${z.name}">${z.name}</option>`).join('');
+      if (trade) trade.innerHTML = CHAMBAYA.TRADES.map(t => `<option>${t}</option>`).join('');
+    });
+  </script>
+</body>
+</html>

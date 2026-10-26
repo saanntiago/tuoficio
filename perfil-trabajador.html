@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfil Trabajador - TuOficioCol</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+<body class="bg-light">
+    <nav class="navbar bg-white shadow-sm">
+        <div class="nav-container">
+            <a href="javascript:history.back()" class="text-dark text-decoration-none">← Volver</a>
+            <h2 class="logo mx-auto">TuOficioCol</h2>
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card text-center mb-4">
+                    <img src="assets/default-avatar.png" class="avatar avatar-lg mx-auto mb-3" style="width: 120px; height: 120px;" id="profile-pic">
+                    <h2 id="profile-name">Cargando...</h2>
+                    <p class="text-primary font-weight-bold" id="profile-trade">Oficio</p>
+                    <div class="d-flex justify-content-center align-items-center mb-3">
+                        <span class="badge badge-verified mr-2">✓ Verificado</span>
+                        <span class="badge bg-success text-white">Disponible</span>
+                    </div>
+                    <div class="star-rating mb-3 text-lg">
+                        <span class="text-warning">★★★★★</span>
+                        <span class="text-secondary ml-1" id="profile-rating">5.0 (0 reseñas)</span>
+                    </div>
+                    
+                    <button class="btn btn-primary btn-full btn-lg mb-2">Solicitar Servicio</button>
+                    <button class="btn btn-outline btn-full mb-2">❤️ Agregar a Favoritos</button>
+                    <button class="btn btn-outline btn-full">Compartir Perfil</button>
+                </div>
+
+                <div class="card mb-4">
+                    <h3 class="card-header border-0 bg-white">Tarifas Estimadas</h3>
+                    <div class="card-body pt-0">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-secondary">Visita Diagnóstica:</span>
+                            <strong id="rate-visit">$0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-secondary">Hora Base:</span>
+                            <strong id="rate-hour">$0/hr</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <h3 class="card-header bg-white border-0">Sobre mí</h3>
+                    <div class="card-body pt-0">
+                        <p id="profile-desc">Descripción del trabajador...</p>
+                        <h4 class="mt-4 mb-2 text-md">Experiencia</h4>
+                        <p id="profile-exp">X años</p>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <h3 class="card-header bg-white border-0 d-flex justify-content-between">
+                        Portafolio de Trabajos
+                    </h3>
+                    <div class="card-body pt-0">
+                        <div class="row" id="portfolio-grid">
+                            <div class="col-6 col-md-4 mb-3">
+                                <div class="bg-light rounded" style="height: 150px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);">Sin imágenes</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <h3 class="card-header bg-white border-0">Reseñas</h3>
+                    <div class="card-body pt-0" id="reviews-list">
+                        <p class="text-secondary">No hay reseñas aún.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const id = urlParams.get('id');
+            
+            if(!id) {
+                document.body.innerHTML = '<div class="container text-center mt-5"><h3>Perfil no encontrado</h3></div>';
+                return;
+            }
+
+            try {
+                // Fetch User and Worker docs
+                const uDoc = await db.collection('usuarios').doc(id).get();
+                const wDoc = await db.collection('trabajadores').doc(id).get();
+                
+                if(uDoc.exists) {
+                    const uData = uDoc.data();
+                    document.getElementById('profile-name').textContent = uData.nombre;
+                    if(uData.foto) document.getElementById('profile-pic').src = uData.foto;
+                }
+                
+                if(wDoc.exists) {
+                    const wData = wDoc.data();
+                    document.getElementById('profile-trade').textContent = wData.oficio || 'Sin oficio';
+                    document.getElementById('profile-desc').textContent = wData.descripcion || 'Sin descripción';
+                    document.getElementById('profile-exp').textContent = wData.experiencia || 'No especificada';
+                    document.getElementById('profile-rating').textContent = `${wData.calificacionPromedio || '0.0'} (${wData.totalResenas || 0} reseñas)`;
+                    
+                    if(wData.tarifas) {
+                        document.getElementById('rate-visit').textContent = `$${wData.tarifas.visitaDiagnostica || 0}`;
+                        document.getElementById('rate-hour').textContent = `$${wData.tarifas.horaBase || 0}/hr`;
+                    }
+                }
+            } catch(e) { console.error("Error loading profile", e); }
+        });
+    </script>
+</body>
+</html>
