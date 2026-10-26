@@ -30,6 +30,7 @@ class AuthService {
   _mapError(err) {
     const map = {
       'auth/invalid-api-key': 'Firebase no está configurado. Pega tu firebaseConfig en js/config/firebase-config.js',
+      'auth/configuration-not-found': 'Firebase Authentication no está habilitado en el proyecto. En Firebase Console → Authentication → Comenzar, habilita Correo/contraseña y Google.',
       'auth/unauthorized-domain': 'Agrega este dominio en Firebase → Authentication → Authorized domains.',
       'auth/popup-closed-by-user': 'Cerraste la ventana de Google. Intenta de nuevo.',
       'auth/cancelled-popup-request': 'Se canceló el inicio de sesión.',

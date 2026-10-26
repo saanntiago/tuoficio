@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const EMULATOR = process.argv.includes('--emulator');
-const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'chambaya-45541';
+const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'tuoficiocol';
 const DEMO_PASSWORD = 'demo1234';
 
 const ADMINS = [

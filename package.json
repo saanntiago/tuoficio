@@ -7,10 +7,11 @@
   "scripts": {
     "seed": "node scripts/seed-firestore.mjs",
     "seed:emulator": "node scripts/seed-firestore.mjs --emulator",
-    "emulators": "firebase emulators:start --only auth,firestore,storage --project chambaya-45541",
+    "emulators": "firebase emulators:start --only auth,firestore,storage --project tuoficiocol",
     "serve": "python -m http.server 8123"
   },
   "devDependencies": {
-    "firebase-admin": "^13.4.0"
+    "firebase-admin": "^13.4.0",
+    "firebase-tools": "^15.34.1"
   }
 }

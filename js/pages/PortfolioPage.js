@@ -168,6 +168,7 @@ class PortfolioPage extends BasePage {
     if (!beforeFile || !afterFile) return fail('Adjunta la foto del antes y la del después.');
 
     this._setBusy(btn, true, 'Subiendo fotos...');
+    this._app.storage.lastError = '';
     try {
       const [antes, despues] = await Promise.all([
         this._app.storage.uploadImage(beforeFile, {
@@ -185,6 +186,12 @@ class PortfolioPage extends BasePage {
           quality: .7,
         }),
       ]);
+      if (this._app.storage.lastError) {
+        this._ui.showToast(
+          `No se pudo usar Cloud Storage: ${this._app.storage.lastError} ` +
+          'Las fotos se guardaron comprimidas.',
+          'info', 9000);
+      }
       let video = videoUrl;
       if (videoFile) {
         if (videoFile.size > (this.isLocal ? 4 : CHAMBAYA.LIMITS.VIDEO_MB) * 1024 * 1024) {

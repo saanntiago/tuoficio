@@ -11,12 +11,12 @@
  * 6. Authentication → Settings → Authorized domains → localhost
  */
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBNWgXKFrJIB85rRl4G0o-KuPIwJkd1MYo",
-  authDomain: "chambaya-45541.firebaseapp.com",
-  projectId: "chambaya-45541",
-  storageBucket: "chambaya-45541.firebasestorage.app",
-  messagingSenderId: "1049651276514",
-  appId: "1:1049651276514:web:e2588e4b591e9bdf0d0cbb"
+  apiKey: "AIzaSyDCJ_BWEocbvBC0cIiOz9e_RnTtkUEGgV0",
+  authDomain: "tuoficiocol.firebaseapp.com",
+  projectId: "tuoficiocol",
+  storageBucket: "tuoficiocol.firebasestorage.app",
+  messagingSenderId: "90335484027",
+  appId: "1:90335484027:web:d171cea3e2b1ac06002ade"
 };
 
 /** Opcional: Places / Maps JS. Si está vacío, el mapa usa OpenStreetMap (Leaflet). */

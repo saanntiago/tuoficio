@@ -16,6 +16,8 @@ class StorageService {
   constructor(mode = 'firebase') {
     this.mode = mode;
     this.lastError = '';
+    /** Tiempo máximo de espera para una imagen antes de usar el respaldo local. */
+    this.uploadTimeoutMs = 20000;
   }
 
   get isLocal() {
@@ -73,19 +75,30 @@ class StorageService {
       throw new Error('Firebase Storage no está disponible. Habilita Storage en Firebase o pega un enlace al video.');
     }
 
-    return this._uploadFile(file, this._buildPath({ ownerId, folder, visibility, file }));
+    // Los videos son más pesados: se da margen según el tamaño (mínimo 60 s,
+    // ~128 KB/s) para no cancelar subidas legítimas en conexiones lentas.
+    const timeoutMs = Math.max(60000, Math.ceil(file.size / (128 * 1024)) * 1000);
+    return this._uploadFile(file, this._buildPath({ ownerId, folder, visibility, file }), timeoutMs);
   }
 
   /** Borra un archivo de Storage a partir de su URL de descarga. */
   async deleteByUrl(url) {
     if (!url || this.isLocal || !this.enabled) return false;
     if (!String(url).includes('firebasestorage')) return false;
+    let timer = null;
     try {
-      await firebase.storage().refFromURL(url).delete();
+      await Promise.race([
+        firebase.storage().refFromURL(url).delete(),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error('storage/timeout')), this.uploadTimeoutMs);
+        }),
+      ]);
       return true;
     } catch (error) {
       console.warn('TuOficio: no se pudo eliminar el archivo de Storage.', error.message);
       return false;
+    } finally {
+      clearTimeout(timer);
     }
   }
 
@@ -116,13 +129,63 @@ class StorageService {
     return this._uploadFile(file, this._buildPath({ ownerId, folder, visibility, file }));
   }
 
-  async _uploadFile(file, path) {
+  async _uploadFile(file, path, timeoutMs = this.uploadTimeoutMs) {
     const ref = firebase.storage().ref(path);
-    const snapshot = await ref.put(file, {
-      contentType: file.type,
-      cacheControl: 'public,max-age=31536000',
+
+    let task;
+    try {
+      task = ref.put(file, {
+        contentType: file.type,
+        cacheControl: 'public,max-age=31536000',
+      });
+    } catch (error) {
+      throw this._storageError(error);
+    }
+
+    // Firebase Storage reintenta solo los errores de red, así que un bucket
+    // inexistente puede dejar la promesa pendiente para siempre. El límite de
+    // tiempo corta la espera y permite que la app muestre el error o use el
+    // respaldo comprimido en lugar de quedarse "cargando".
+    let timer = null;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        try { task.cancel(); } catch (e) { /* la tarea ya terminó */ }
+        const error = new Error(
+          `Storage no respondió en ${Math.round(timeoutMs / 1000)} s. ` +
+          'Revisa que Cloud Storage esté creado en Firebase Console y que las reglas estén publicadas.'
+        );
+        error.code = 'storage/timeout';
+        reject(error);
+      }, timeoutMs);
     });
-    return snapshot.ref.getDownloadURL();
+
+    const upload = task
+      .then(snapshot => snapshot.ref.getDownloadURL())
+      .catch(error => { throw this._storageError(error); });
+
+    try {
+      return await Promise.race([upload, timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /** Traduce los errores de Storage a mensajes accionables. */
+  _storageError(error) {
+    if (error && error.code === 'storage/timeout') return error;
+    const code = error && error.code ? String(error.code) : '';
+    const map = {
+      'storage/bucket-not-found': 'Cloud Storage no está creado en Firebase. Actívalo en Firebase Console → Storage.',
+      'storage/unauthorized': 'Las reglas de Storage no permiten esta subida. Revisa storage.rules y que tu sesión esté activa.',
+      'storage/retry-limit-exceeded': 'Storage no respondió. Revisa tu conexión y que Cloud Storage esté habilitado.',
+      'storage/unknown': 'Storage devolvió un error desconocido. Revisa que el bucket exista y esté habilitado.',
+    };
+    const friendly = map[code];
+    if (!friendly) return error instanceof Error ? error : new Error(String(error));
+    const wrapped = new Error(friendly);
+    wrapped.code = code;
+    wrapped.original = error;
+    return wrapped;
   }
 
   _buildPath({ ownerId, folder, visibility, file }) {

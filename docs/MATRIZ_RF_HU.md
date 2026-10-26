@@ -73,7 +73,7 @@ Estados usados:
 
 ## 4. Pruebas con Firebase Emulator Suite
 
-La segunda corrida se hizo con **Firebase Auth, Firestore y Storage emulados** y las reglas del repositorio. Se verificaron login, escrituras, reseñas, reportes, verificación, archivos públicos/privados y bloqueos de escalamiento. El proyecto real `chambaya-45541` sigue sin reglas desplegadas ni datos sembrados porque falta sesión/cuenta de servicio.
+La segunda corrida se hizo con **Firebase Auth, Firestore y Storage emulados** y las reglas del repositorio. Se verificaron login, escrituras, reseñas, reportes, verificación, archivos públicos/privados y bloqueos de escalamiento. El proyecto real `tuoficiocol` ya tiene Firestore y reglas activas, pero seguía sin datos sembrados y sin Authentication/Storage configurados porque falta sesión/cuenta de servicio.
 
 ## 5. Nota de honestidad académica
 

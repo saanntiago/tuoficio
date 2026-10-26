@@ -31,7 +31,7 @@ Si Pages no está disponible para el repositorio, usa Firebase Hosting o un host
 npm install -g firebase-tools
 npm install
 firebase login
-firebase use chambaya-45541
+firebase use tuoficiocol
 firebase deploy --only firestore:rules,firestore:indexes,storage
 $env:GOOGLE_APPLICATION_CREDENTIALS="C:\ruta\service-account.json"
 npm run seed

@@ -17,7 +17,7 @@ Esta carpeta reúne la documentación técnica, la trazabilidad de requisitos y 
 - La aplicación funciona sin build en `app.html`, con páginas públicas `index.html`, `buscar.html` y `perfil.html`.
 - Si Firestore no está disponible, se activa automáticamente el modo demostración local.
 - Firebase Auth, Firestore y Storage se probaron con **Firebase Emulator Suite** y las reglas del repositorio: login, escrituras, reseñas, reportes, verificación, archivos públicos/privados y bloqueo de escalamiento de privilegios.
-- El proyecto real `chambaya-45541` aún no tiene reglas desplegadas ni datos sembrados: falta `firebase login` o una cuenta de servicio. Mientras tanto, la app usa el modo demo local si Firestore responde `permission-denied`.
+- El proyecto real `tuoficiocol` ya tiene Firestore y reglas activas, pero aún no tiene Authentication habilitado, Storage creado ni datos sembrados: faltan `firebase login` o una cuenta de servicio y `npm run seed`. Mientras tanto, la app usa el modo demo local si Firestore responde `permission-denied`.
 - Google Login está implementado en código, pero requiere habilitar el proveedor en Firebase y autorizar el dominio.
 - Las notificaciones push con la pestaña cerrada y el correo automático no están implementados: requieren un backend/FCM o un servicio de correo con credenciales.
 - La validación con MinTrabajo/Saber Hacer Vale es manual porque no existe una API pública documentada.

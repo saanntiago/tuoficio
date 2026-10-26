@@ -171,7 +171,7 @@ Las páginas antiguas (`dashboard-cliente.html`, `dashboard-trabajador.html`, `d
 
 ## 4. Configuración de Firebase
 
-Proyecto configurado por defecto: **`chambaya-45541`** (ver `.firebaserc` y `js/config/firebase-config.js`).
+Proyecto configurado por defecto: **`tuoficiocol`** (ver `.firebaserc` y `js/config/firebase-config.js`).
 
 ### 4.1 Desplegar reglas
 
@@ -181,7 +181,7 @@ Mientras las reglas no estén desplegadas, Firestore responderá `Missing or ins
 npm install
 npm install -g firebase-tools
 firebase login
-firebase use chambaya-45541
+firebase use tuoficiocol
 firebase deploy --only firestore:rules,firestore:indexes,storage
 $env:GOOGLE_APPLICATION_CREDENTIALS="C:\ruta\service-account.json"
 npm run seed
@@ -202,7 +202,7 @@ En Firebase Console → Authentication → Sign-in method:
 
 - Habilitar **Correo electrónico/contraseña**.
 - Habilitar **Google**.
-- Agregar `127.0.0.1` y el dominio de producción a **Authorized domains**.
+- Agregar `127.0.0.1`, `localhost` y el dominio exacto de producción a **Authorized domains**. Firebase no acepta comodines (`*`): cada dominio se registra sin `http://`, sin puerto y sin ruta.
 
 ### 4.3 Firestore
 
@@ -284,7 +284,7 @@ Se ejecutaron los flujos en modo demostración local el 25 de octubre de 2026 y 
 
 ## 7. Limitaciones conocidas
 
-- El proyecto `chambaya-45541` requiere ejecutar `firebase deploy --only firestore:rules,firestore:indexes,storage` y `npm run seed` para salir del modo demo. Firebase CLI, Node y npm ya están instalados, pero en el equipo de prueba no hay sesión ni cuenta de servicio, así que las reglas **no están desplegadas en el proyecto real**. El emulador sí fue probado con las reglas del repositorio.
+- El proyecto `tuoficiocol` ya tiene Firestore creado y reglas activas, pero faltan habilitar Authentication, crear el bucket de Storage y ejecutar `npm run seed` para cargar los datos demo. La CLI aún no tiene sesión (`firebase login`) ni cuenta de servicio en este equipo. El emulador sí fue probado con las reglas del repositorio.
 - El inicio de sesión con Google requiere habilitar el proveedor y los dominios autorizados en Firebase. El botón existe, pero el flujo real no se ha probado.
 - En modo demo los datos son locales al navegador y no se sincronizan entre dispositivos.
 - No se incluyen Cloud Functions; el push con la pestaña cerrada y el correo automático requieren backend/FCM o un proveedor de correo con credenciales.

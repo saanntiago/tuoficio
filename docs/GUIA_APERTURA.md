@@ -83,12 +83,12 @@ Para restaurar los datos iniciales: **Configuración → Restablecer datos de de
 
 ## 7. Firebase (opcional)
 
-El proyecto apunta a `chambaya-45541` en `js/config/firebase-config.js` y `.firebaserc`. Para usar Firestore y Storage reales:
+El proyecto apunta a `tuoficiocol` en `js/config/firebase-config.js` y `.firebaserc`. Para usar Firestore y Storage reales:
 
 ```powershell
 npm install
 firebase login
-firebase use chambaya-45541
+firebase use tuoficiocol
 firebase deploy --only firestore:rules,firestore:indexes,storage
 $env:GOOGLE_APPLICATION_CREDENTIALS="C:\ruta\service-account.json"
 npm run seed
