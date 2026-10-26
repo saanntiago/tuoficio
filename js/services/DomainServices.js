@@ -6,6 +6,49 @@
  * verificaciones, reportes, favoritos y notificaciones.
  */
 
+/**
+ * Datos mínimos que debe tener un perfil de trabajador antes de poder
+ * solicitar la insignia de "Perfil Verificado" (HU-05 / RF04).
+ *
+ * Acepta tanto el documento crudo de Firestore como el objeto mapeado por
+ * WorkerService, porque ambos conservan los nombres originales de los campos.
+ */
+function profileChecklist(worker = {}, user = {}) {
+  const items = [
+    { key: 'nombre', label: 'Nombre completo', done: Boolean(worker.nombre || user.nombre) },
+    { key: 'oficio', label: 'Oficio principal', done: Boolean(worker.oficio || user.oficio) },
+    { key: 'zona', label: 'Zona / localidad', done: Boolean(worker.zona || user.zona) },
+    { key: 'descripcion', label: 'Descripción de tus servicios', done: Boolean(worker.descripcion) },
+    { key: 'experiencia', label: 'Años de experiencia', done: Number(worker.experiencia) > 0 },
+    {
+      key: 'tarifas',
+      label: 'Tarifas de referencia',
+      done: Number(worker.tarifas?.visitaDiagnostica) > 0 || Number(worker.tarifas?.horaBase) > 0,
+    },
+    { key: 'telefono', label: 'Teléfono o WhatsApp', done: Boolean(worker.telefono || user.telefono) },
+    { key: 'habilidades', label: 'Habilidades', done: (worker.habilidades || []).length > 0 },
+    {
+      key: 'portafolio',
+      label: 'Al menos un trabajo en el portafolio',
+      done: (worker.portafolio || []).length > 0,
+    },
+    {
+      key: 'horario',
+      label: 'Horario de atención',
+      done: Boolean(worker.horario?.dias?.length),
+    },
+  ];
+  const done = items.filter(item => item.done).length;
+  return {
+    items,
+    missing: items.filter(item => !item.done).map(item => item.label),
+    done,
+    total: items.length,
+    percent: Math.round((done / items.length) * 100),
+    complete: done === items.length,
+  };
+}
+
 class WorkerService {
   constructor(db) {
     this._db = db;
@@ -50,21 +93,39 @@ class WorkerService {
   }
 
   async getAll({ onlyActive = false } = {}) {
-    const [workers, users] = await Promise.all([
-      this._db.getAll(this._db.COLLECTIONS.WORKERS),
-      this._db.getAll(this._db.COLLECTIONS.USERS, [['rol', '==', 'trabajador']]),
-    ]);
-    const byId = Object.fromEntries(users.map(u => [u.id, u]));
-    const mapped = workers.map(w => this._map(w, byId[w.id] || {}));
+    const workers = await this._db.getAll(this._db.COLLECTIONS.WORKERS);
+    let users = null;
+    try {
+      users = await this._db.getAll(this._db.COLLECTIONS.USERS, [['rol', '==', 'trabajador']]);
+    } catch (e) {
+      // Si las reglas desplegadas no permiten listar cuentas, se degrada con
+      // los datos de la propia ficha en lugar de romper el directorio.
+      console.warn('No se pudieron leer los roles de usuario; se usa la ficha del técnico.', e.message);
+    }
+    const byId = users ? Object.fromEntries(users.map(u => [u.id, u])) : null;
+    const mapped = workers
+      // Con los roles disponibles, solo se listan fichas cuya cuenta siga
+      // teniendo rol de trabajador. Así un admin o cliente con una ficha
+      // antigua no aparece en el directorio.
+      .filter(w => (byId ? byId[w.id] : (w.rol !== 'admin' && w.activo !== false)))
+      .map(w => this._map(w, (byId && byId[w.id]) || {}));
     return onlyActive ? mapped.filter(w => w.active) : mapped;
   }
 
   async getById(workerId) {
-    const [worker, user] = await Promise.all([
-      this._db.get(this._db.COLLECTIONS.WORKERS, workerId),
-      this._db.get(this._db.COLLECTIONS.USERS, workerId),
-    ]);
+    const worker = await this._db.get(this._db.COLLECTIONS.WORKERS, workerId);
+    let user = null;
+    try {
+      user = await this._db.get(this._db.COLLECTIONS.USERS, workerId);
+    } catch (e) {
+      // Si no se puede leer la cuenta no se puede confirmar el rol; no se
+      // expone la ficha (por ejemplo, un admin con una ficha antigua).
+      return null;
+    }
     if (!worker && !user) return null;
+    // Una cuenta ascendida a admin (o cambiada a cliente) no debe exponerse
+    // como técnica aunque conserve su antigua ficha en `trabajadores`.
+    if (user && user.rol && user.rol !== 'trabajador') return null;
     return this._map(worker || {}, user || {});
   }
 
@@ -264,20 +325,7 @@ class WorkerService {
   /* ── Perfil ─────────────────────────────────────────────── */
 
   completeness(worker = {}, user = {}) {
-    const checks = [
-      Boolean(worker.nombre || user.nombre),
-      Boolean(worker.oficio || user.oficio),
-      Boolean(worker.zona || user.zona),
-      Boolean(worker.descripcion),
-      Number(worker.experiencia) > 0,
-      Boolean(worker.tarifas?.visitaDiagnostica || worker.tarifas?.horaBase),
-      Boolean(worker.telefono || user.telefono),
-      (worker.habilidades || []).length > 0,
-      (worker.portafolio || []).length > 0,
-      Boolean(worker.horario?.dias?.length),
-    ];
-    const done = checks.filter(Boolean).length;
-    return { done, total: checks.length, percent: Math.round((done / checks.length) * 100) };
+    return profileChecklist(worker, user);
   }
 }
 
@@ -460,7 +508,40 @@ class VerificationService {
     this._db = db;
   }
 
-  async request(uid, data) {
+  async request(uid, data = {}) {
+    const [worker, user] = await Promise.all([
+      this._db.get(this._db.COLLECTIONS.WORKERS, uid),
+      this._db.get(this._db.COLLECTIONS.USERS, uid),
+    ]);
+    // HU-05: primero se completa el perfil; solo entonces se puede pedir la
+    // revisión. La validación se repite aquí y no solo en la interfaz.
+    if (!worker) {
+      throw new Error('Primero completa tu perfil de trabajador antes de solicitar la verificación.');
+    }
+    // Sincroniza datos de la cuenta que falten en la ficha para que la
+    // validación de la interfaz y la de las reglas coincidan.
+    const patch = {};
+    ['nombre', 'oficio', 'zona'].forEach(key => {
+      if (!worker[key] && user?.[key]) patch[key] = user[key];
+    });
+    if (!worker.telefono && (user?.telefono || user?.whatsapp)) {
+      patch.telefono = user.telefono || user.whatsapp;
+    }
+    if (Object.keys(patch).length) {
+      await this._db.set(this._db.COLLECTIONS.WORKERS, uid, patch);
+      Object.assign(worker, patch);
+    }
+    const checklist = profileChecklist(worker, user || {});
+    if (!checklist.complete) {
+      throw new Error(`Completa el 100% de tu perfil antes de solicitar la verificación. Falta: ${checklist.missing.join(', ')}.`);
+    }
+    if (!String(data.documentoUrl || '').trim() || !String(data.selfieUrl || '').trim()) {
+      throw new Error('Adjunta el documento de identidad y la foto de tu rostro.');
+    }
+    if (!String(data.tipoDocumento || '').trim() || !String(data.numeroDocumento || '').trim()) {
+      throw new Error('Indica el tipo y el número de tu documento de identidad.');
+    }
+
     const existing = await this.getMine(uid);
     if (existing && existing.estado === 'Pendiente') {
       throw new Error('Ya tienes una solicitud en revisión.');

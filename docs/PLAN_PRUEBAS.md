@@ -102,9 +102,9 @@ Los datos del emulador son efímeros: se pierden al detener el proceso. Los IDs 
 
 ### HU-05 / HU-15 / RF04 — Verificación y aprobación
 
-- **Pasos:** el trabajador envía documento + selfie; el administrador revisa y aprueba.
-- **Esperado:** estado `Pendiente` → `Aprobado`, badge visible.
-- **Observado:** solicitud `ver-mvoqtm7n-w0b3x` creada con estado `Pendiente`; el admin la aprobó y el trabajador quedó con `badgeVerified: true` y `verificacionEstado: aprobado`.
+- **Pasos:** el trabajador completa su perfil al 100%, envía documento + selfie; el administrador revisa y aprueba.
+- **Esperado:** sin perfil completo no se puede enviar la solicitud; con el perfil completo, estado `Pendiente` → `Aprobado`, badge visible.
+- **Observado:** solicitud `ver-mvoqtm7n-w0b3x` creada con estado `Pendiente`; el admin la aprobó y el trabajador quedó con `badgeVerified: true` y `verificacionEstado: aprobado`. En la validación de reglas del 27 de octubre de 2026, un perfil incompleto y una solicitud sin selfie devolvieron `403`; el perfil completo permitió crear la solicitud (`200`).
 - **Limitación:** no hay integración con MinTrabajo/Saber Hacer Vale; la validación institucional es manual. En el emulador se repitió el flujo con documento/selfie privados y un intento de autoaprobación bloqueado.
 - **Resultado:** **Cumple con limitación**.
 

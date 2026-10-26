@@ -48,6 +48,21 @@ service cloud.firestore {
         get(/databases/$(database)/documents/resenas/$(request.resource.data.ultimaResenaId)).data.trabajadorId == workerId &&
         get(/databases/$(database)/documents/resenas/$(request.resource.data.ultimaResenaId)).data.clienteId == request.auth.uid;
     }
+    // HU-05: la verificación solo se solicita cuando el perfil está completo.
+    function workerProfileComplete(uid) {
+      let path = /databases/$(database)/documents/trabajadores/$(uid);
+      return exists(path) &&
+        get(path).data.nombre != '' &&
+        get(path).data.oficio != '' &&
+        get(path).data.zona != '' &&
+        get(path).data.descripcion != '' &&
+        get(path).data.telefono != '' &&
+        get(path).data.experiencia > 0 &&
+        get(path).data.habilidades.size() > 0 &&
+        get(path).data.portafolio.size() > 0 &&
+        get(path).data.horario.dias.size() > 0 &&
+        (get(path).data.tarifas.visitaDiagnostica > 0 || get(path).data.tarifas.horaBase > 0);
+    }
 
     /* ── Usuarios ──────────────────────────────────────────── */
     match /usuarios/{userId} {
@@ -182,7 +197,17 @@ service cloud.firestore {
       allow read: if signedIn() && (
         isAdmin() || request.auth.uid == resource.data.trabajadorId
       );
-      allow create: if isActive() && request.resource.data.trabajadorId == request.auth.uid;
+      allow create: if isActive() &&
+        request.resource.data.trabajadorId == request.auth.uid &&
+        workerProfileComplete(request.auth.uid) &&
+        request.resource.data.documentoUrl is string &&
+        request.resource.data.documentoUrl != '' &&
+        request.resource.data.selfieUrl is string &&
+        request.resource.data.selfieUrl != '' &&
+        request.resource.data.tipoDocumento is string &&
+        request.resource.data.tipoDocumento != '' &&
+        request.resource.data.numeroDocumento is string &&
+        request.resource.data.numeroDocumento != '';
       allow update, delete: if isAdmin();
     }
 

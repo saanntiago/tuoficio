@@ -38,6 +38,8 @@ El rol vive en `usuarios/{uid}.rol`. Las reglas de Firestore impiden que un usua
 
 También puedes usar `npm run seed`: crea `admin1@chambaya.com / AdminChamba1!`, `admin2@chambaya.com / AdminChamba2!` y `admin3@chambaya.com / AdminChamba3!` con `rol: admin`. El seed necesita la cuenta de servicio y omite las reglas de seguridad.
 
+> **Si la cuenta se registró antes como trabajador**, su documento en `trabajadores` puede seguir existiendo. Al iniciar sesión como admin, la app lo marca automáticamente con `rol: "admin"` y `activo: false` (no lo borra). Las páginas públicas (`index.html`, `buscar.html`, `perfil.html`) leen `trabajadores` sin iniciar sesión y no pueden consultar `usuarios`, así que si la ficha quedó de antes sin esas marcas hay que limpiarla a mano: en **Firestore → trabajadores**, elimina el documento cuyo ID sea el UID del admin, o ponle `activo: false` y `rol: "admin"`. Para volver a ser trabajador, restaura `activo: true` y `rol: "trabajador"`.
+
 ## 3. Desplegar reglas e índices
 
 ```powershell
@@ -48,7 +50,7 @@ firebase deploy --only firestore:rules,firestore:indexes,storage
 
 El despliegue incluye:
 
-- `firestore.rules`: permisos por propietario, rol y estado; bloquea el cambio de `rol` a admin, la autoasignación de `badgeVerified` y la autoaprobación de verificaciones; valida reseñas, reportes y el agregado de calificación.
+- `firestore.rules`: permisos por propietario, rol y estado; bloquea el cambio de `rol` a admin, la autoasignación de `badgeVerified` y la autoaprobación de verificaciones; exige perfil 100% completo, documento y selfie para solicitar la verificación; valida reseñas, reportes y el agregado de calificación.
 - `firestore.indexes.json`: índices para mensajes y reseñas.
 - `storage.rules`: lectura pública de avatar/portafolio y lectura privada de documento/selfie.
 

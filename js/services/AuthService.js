@@ -396,6 +396,21 @@ class AuthService {
 
   /* ── Documentos de perfil (modo Firebase) ────────────────── */
 
+  // Un administrador no debe seguir apareciendo en el directorio de técnicos:
+  // si conserva una ficha antigua en `trabajadores`, se oculta sin borrarla.
+  async _hideWorkerProfile(uid) {
+    try {
+      const worker = await this._db.get(this._db.COLLECTIONS.WORKERS, uid);
+      if (!worker || (worker.rol === 'admin' && worker.activo === false)) return;
+      await this._db.set(this._db.COLLECTIONS.WORKERS, uid, {
+        rol: 'admin',
+        activo: false,
+      });
+    } catch (e) {
+      console.warn('TuOficio: no se pudo ocultar la ficha de trabajador del admin.', e.message);
+    }
+  }
+
   async _promoteAdmin(fbUser) {
     const admin = adminByEmail(fbUser.email);
     if (!admin) return null;
@@ -417,6 +432,9 @@ class AuthService {
       foto: doc?.foto || fbUser.photoURL || '',
       googleAuth: fbUser.providerData.some(p => p.providerId === 'google.com'),
     };
+    // Cubre tanto a los admins del seed como a una cuenta promovida a mano
+    // desde Firestore: en ambos casos se retira del directorio de técnicos.
+    if (merged.rol === 'admin') await this._hideWorkerProfile(fbUser.uid);
     const profile = this._baseProfile(fbUser.uid, merged);
     profile.needsRole = !admin && !doc;
     profile.verified = Boolean(admin || doc?.verificado);
@@ -461,6 +479,7 @@ class AuthService {
     const z = zoneByName(zone);
     await this._db.set(this._db.COLLECTIONS.WORKERS, uid, {
       uid,
+      rol: 'trabajador',
       nombre: extras.name || userDoc?.nombre || '',
       oficio: extras.trade || '',
       experiencia: Number(extras.experience) || 0,

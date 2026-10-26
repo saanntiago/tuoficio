@@ -137,8 +137,10 @@ class DashboardPage extends BasePage {
       ? `<div class="notice notice-success"><i class="fas fa-circle-check"></i><div><strong>Perfil verificado.</strong> Tu insignia es visible en el directorio y en tu perfil público.</div></div>`
       : status === CHAMBAYA.VERIFICATION_STATUS.PENDING
         ? `<div class="notice notice-warning"><i class="fas fa-hourglass-half"></i><div><strong>Verificación en revisión.</strong> Tu solicitud está siendo evaluada por el equipo de TuOficioCol.</div></div>`
-        : `<div class="notice notice-warning"><i class="fas fa-shield-halved"></i><div><strong>Aún no estás verificado.</strong> Envía tu documento y una foto de tu rostro para obtener la insignia.
-          <button class="link-btn" onclick="ui.navigateTo('profile')">Solicitar verificación</button></div></div>`;
+        : `<div class="notice notice-warning"><i class="fas fa-shield-halved"></i><div><strong>Aún no estás verificado.</strong> ${completeness.complete
+          ? 'Envía tu documento y una foto de tu rostro para obtener la insignia.'
+          : `Primero completa tu perfil (<strong>${completeness.percent}%</strong>). Te falta: ${escapeHtml(completeness.missing.join(', '))}.`}
+          <button class="link-btn" onclick="ui.navigateTo('profile')">${completeness.complete ? 'Solicitar verificación' : 'Completar mi perfil'}</button></div></div>`;
 
     container.innerHTML = `
       ${this._hero('Panel del trabajador', `${this._greeting()}, ${escapeHtml(this._firstName())}.`,

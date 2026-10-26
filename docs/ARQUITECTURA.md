@@ -81,7 +81,7 @@ En modo local, `LocalStore` siembra `js/data/seed.js` la primera vez. La base de
 ## 7. Seguridad
 
 - `firestore.rules` restringe escrituras por propietario/rol. Un usuario no puede cambiar su propio `rol` a administrador; tampoco puede modificar `activo`, `sancion` o `verificado`. Un trabajador no puede escribir `badgeVerified: true` ni aprobar su verificación.
-- La solicitud de verificación solo puede pasar a `en_revision` con `badgeVerified: false`; la aprobación queda reservada al administrador.
+- La solicitud de verificación exige que el perfil del trabajador esté 100% completo (nombre, oficio, zona, descripción, experiencia, teléfono, tarifas, habilidades, portafolio y horario) y que incluya documento de identidad y selfie. Solo puede pasar a `en_revision` con `badgeVerified: false`; la aprobación queda reservada al administrador.
 - El promedio de reseñas se actualiza con una regla que exige un `ultimaResenaId` real, del mismo trabajador y creado por el cliente autenticado.
 - `storage.rules` separa archivos públicos y privados, limita imágenes a 5 MB y videos a 50 MB, y permite al administrador leer las verificaciones. En el emulador se comprobó que un usuario ajeno recibe `storage/unauthorized`.
 - En modo local no hay seguridad de servidor: es una demostración para un solo navegador.

@@ -81,7 +81,7 @@ const PublicData = (() => {
     try {
       const rows = await db.getAll(CHAMBAYA.COLLECTIONS.WORKERS);
       workersCache = rows
-        .filter(r => r && r.activo !== false)
+        .filter(r => r && r.activo !== false && r.rol !== 'admin')
         .map(normalize);
     } catch (e) {
       console.warn('TuOficio público: no se pudo leer el directorio.', e.message);
@@ -95,7 +95,7 @@ const PublicData = (() => {
     await init();
     try {
       const row = await db.get(CHAMBAYA.COLLECTIONS.WORKERS, id);
-      if (row) return normalize(row);
+      if (row && row.rol !== 'admin') return normalize(row);
     } catch (e) {
       console.warn('TuOficio público: no se pudo leer el perfil.', e.message);
     }

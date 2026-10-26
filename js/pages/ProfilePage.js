@@ -25,14 +25,7 @@ class ProfilePage extends BasePage {
     if (!this._alive) return;
     const w = this.worker || {};
     const user = this.user;
-    const completeness = this.isWorker
-      ? this._app.workers.completeness({
-          nombre: w.name || user.name, oficio: w.trade || user.oficio, zona: w.zone || user.zone,
-          descripcion: w.description, experiencia: w.experience, tarifas: w.tarifas,
-          telefono: w.phone || user.telefono, habilidades: w.habilidades, portafolio: w.portafolio,
-          horario: w.schedule,
-        }, user)
-      : null;
+    const completeness = this.isWorker ? this._profileChecklist(w) : null;
 
     container.innerHTML = `
       ${this._header(this.isWorker ? 'Mi perfil y hoja de vida' : 'Mi perfil',
@@ -91,6 +84,21 @@ class ProfilePage extends BasePage {
           ${this.isWorker ? this._verificationCard(w) : this._clientSide()}
         </aside>
       </div>`;
+  }
+
+  _profileChecklist(w = {}) {
+    const user = this.user || {};
+    return this._app.workers.completeness({
+      nombre: w.name || user.name, oficio: w.trade || user.oficio, zona: w.zone || user.zone,
+      descripcion: w.description, experiencia: w.experience, tarifas: w.tarifas,
+      telefono: w.phone || user.telefono, habilidades: w.habilidades, portafolio: w.portafolio,
+      horario: w.schedule,
+    }, user);
+  }
+
+  focusProfileForm() {
+    const target = document.querySelector('.profile-main');
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   _workerSections(w) {
@@ -190,23 +198,50 @@ class ProfilePage extends BasePage {
     const isApproved = w.badgeVerified || status === CHAMBAYA.VERIFICATION_STATUS.APPROVED;
     const isPending = status === CHAMBAYA.VERIFICATION_STATUS.PENDING || v?.estado === 'Pendiente';
     const isRejected = status === CHAMBAYA.VERIFICATION_STATUS.REJECTED || v?.estado === 'Rechazado';
+    const checklist = this._profileChecklist(w);
     const pendingDate = v?.createdAt ? timeAgo(v.createdAt) : '';
+    const canRequest = !isApproved && !isPending && checklist.complete;
 
-    return `<div class="side-card verification-card ${isApproved ? 'approved' : isPending ? 'pending' : isRejected ? 'rejected' : ''}">
-      <div class="verification-icon"><i class="fas ${isApproved ? 'fa-circle-check' : isPending ? 'fa-hourglass-half' : 'fa-shield-halved'}"></i></div>
-      <h3>${isApproved ? 'Perfil verificado' : isPending ? 'Verificación en revisión' : isRejected ? 'Verificación rechazada' : 'Obtén tu insignia'}</h3>
-      <p>${isApproved
-        ? 'Tu documento y tu rostro fueron validados. La insignia aparece junto a tu nombre en todo TuOficioCol.'
-        : isPending
-          ? `Recibimos tu solicitud ${pendingDate}. Un administrador la revisará y te notificará la decisión.`
+    const title = isApproved
+      ? 'Perfil verificado'
+      : isPending
+        ? 'Verificación en revisión'
+        : !checklist.complete
+          ? 'Completa tu perfil para verificarte'
+          : isRejected
+            ? 'Verificación rechazada'
+            : 'Obtén tu insignia';
+
+    const description = isApproved
+      ? 'Tu documento y tu rostro fueron validados. La insignia aparece junto a tu nombre en todo TuOficioCol.'
+      : isPending
+        ? `Recibimos tu solicitud ${pendingDate}. Un administrador la revisará y te notificará la decisión.`
+        : !checklist.complete
+          ? `Antes de solicitar la insignia debes completar toda la información de tu perfil.${isRejected && v?.observacion ? ` Motivo del rechazo anterior: ${escapeHtml(v.observacion)}.` : ''} Te falta:`
           : isRejected
             ? `Tu solicitud fue rechazada. ${escapeHtml(v?.observacion || 'Revisa que el documento sea legible y coincida con tu rostro.')} Puedes volver a intentarlo.`
-            : 'Envía tu documento de identidad y una foto de tu rostro. Un administrador revisará el caso y, si es aprobado, obtendrás la insignia de verificado.'}</p>
-      ${isApproved
-        ? '<div class="verified-badge big"><i class="fas fa-check-circle"></i> Insignia activa</div>'
-        : isPending
-          ? '<div class="verification-steps"><span class="step done"><i class="fas fa-check"></i> Enviado</span><span class="step current"><i class="fas fa-clock"></i> En revisión</span><span class="step"><i class="fas fa-certificate"></i> Aprobación</span></div>'
-          : `<button class="btn btn-primary btn-full" onclick="ui._getPage('profile').openVerification()"><i class="fas fa-id-card"></i> ${isRejected ? 'Enviar nueva solicitud' : 'Solicitar verificación'}</button>`}
+            : 'Envía tu documento de identidad y una foto de tu rostro. Un administrador revisará el caso y, si es aprobado, obtendrás la insignia de verificado.';
+
+    const action = isApproved
+      ? '<div class="verified-badge big"><i class="fas fa-check-circle"></i> Insignia activa</div>'
+      : isPending
+        ? '<div class="verification-steps"><span class="step done"><i class="fas fa-check"></i> Enviado</span><span class="step current"><i class="fas fa-clock"></i> En revisión</span><span class="step"><i class="fas fa-certificate"></i> Aprobación</span></div>'
+        : canRequest
+          ? `<button class="btn btn-primary btn-full" onclick="ui._getPage('profile').openVerification()"><i class="fas fa-id-card"></i> ${isRejected ? 'Enviar nueva solicitud' : 'Solicitar verificación'}</button>`
+          : `<div class="profile-progress">
+              <div class="progress-head"><span>Perfil completo</span><strong>${checklist.percent}%</strong></div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${checklist.percent}%"></div></div>
+            </div>
+            <ul class="verification-missing">
+              ${checklist.missing.map(label => `<li><i class="fas fa-circle-exclamation"></i><span>${escapeHtml(label)}</span></li>`).join('')}
+            </ul>
+            <button class="btn btn-secondary btn-full" onclick="ui._getPage('profile').focusProfileForm()"><i class="fas fa-pen-to-square"></i> Completar mi perfil</button>`;
+
+    return `<div class="side-card verification-card ${isApproved ? 'approved' : isPending ? 'pending' : isRejected ? 'rejected' : ''}">
+      <div class="verification-icon"><i class="fas ${isApproved ? 'fa-circle-check' : isPending ? 'fa-hourglass-half' : !checklist.complete ? 'fa-list-check' : 'fa-shield-halved'}"></i></div>
+      <h3>${title}</h3>
+      <p>${description}</p>
+      ${action}
       <div class="verification-note"><i class="fas fa-lock"></i> Tus documentos solo los ve el equipo administrativo.</div>
     </div>
     <div class="side-card">
@@ -323,25 +358,31 @@ class ProfilePage extends BasePage {
   /* ── Verificación (RF04 / HU-05, HU-15) ────────────────────────── */
 
   openVerification() {
+    const checklist = this._profileChecklist(this.worker || {});
+    if (!checklist.complete) {
+      this._ui.showToast(`Completa tu perfil al 100% antes de solicitar la verificación. Falta: ${checklist.missing.join(', ')}.`, 'error', 7000);
+      this.focusProfileForm();
+      return;
+    }
     this._ui.openModal(`
       <div class="modal-header">
         <div class="modal-title">Solicitar verificación</div>
         <button class="modal-close" onclick="ui.closeModal()"><i class="fas fa-times"></i></button>
       </div>
-      <p class="modal-copy">Adjunta una foto legible de tu documento de identidad y una selfie de tu rostro. El administrador comparará ambos archivos antes de aprobar la insignia.</p>
+      <div class="notice notice-success"><i class="fas fa-circle-check"></i><div>Tu perfil está 100% completo. Adjunta una foto legible de tu documento de identidad y una selfie de tu rostro. El administrador comparará ambos archivos antes de aprobar la insignia.</div></div>
       <div class="form-row">
         <div class="form-group"><label>Tipo de documento</label>
           <select class="form-input" id="verDocType">
             <option>Cédula de ciudadanía</option><option>Cédula de extranjería</option><option>Pasaporte</option>
           </select>
         </div>
-        <div class="form-group"><label>Número de documento</label><input class="form-input" id="verDocNumber" placeholder="1020304050"></div>
+        <div class="form-group"><label>Número de documento</label><input class="form-input" id="verDocNumber" value="${escapeHtml(this.user.documento || '')}" placeholder="1020304050"></div>
       </div>
       <div class="form-group"><label>Documento de identidad (JPG/PNG, máx. 5 MB) *</label>
-        <input class="form-input" id="verDocFile" type="file" accept="image/png,image/jpeg" onchange="ui._getPage('profile').checkFile(this, 'doc')">
+        <input class="form-input" id="verDocFile" type="file" accept="image/png,image/jpeg" capture="environment" onchange="ui._getPage('profile').checkFile(this, 'doc')">
       </div>
-      <div class="form-group"><label>Foto de tu rostro (selfie, máx. 5 MB) *</label>
-        <input class="form-input" id="verSelfieFile" type="file" accept="image/png,image/jpeg" onchange="ui._getPage('profile').checkFile(this, 'selfie')">
+      <div class="form-group"><label>Foto de tu rostro (selfie, JPG/PNG, máx. 5 MB) *</label>
+        <input class="form-input" id="verSelfieFile" type="file" accept="image/png,image/jpeg" capture="user" onchange="ui._getPage('profile').checkFile(this, 'selfie')">
       </div>
       <div class="form-group"><label>Certificados o experiencia (opcional)</label>
         <textarea class="form-input" id="verCerts" rows="2" placeholder="Ej.: Técnico en electricidad, SENA 2019."></textarea>
@@ -375,6 +416,11 @@ class ProfilePage extends BasePage {
     const number = document.getElementById('verDocNumber').value.trim();
     if (!number) return fail('Escribe el número de tu documento.');
     if (!docFile || !selfieFile) return fail('Adjunta el documento y la foto de tu rostro.');
+
+    const checklist = this._profileChecklist(this.worker || {});
+    if (!checklist.complete) {
+      return fail(`Completa el 100% de tu perfil antes de solicitar la verificación. Falta: ${checklist.missing.join(', ')}.`);
+    }
 
     this._setBusy(btn, true, 'Subiendo documentos...');
     try {
