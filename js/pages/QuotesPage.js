@@ -1,5 +1,5 @@
 /**
- * Cotizaciones y ofertas (RF09, RF10, RF15).
+ * Cotizaciones y ofertas (RF06, RF15 / HU-09).
  *  - Empleador: publica solicitudes, revisa ofertas y contrata a un técnico.
  *  - Trabajador: ve solicitudes cercanas, envía ofertas y responde solicitudes directas.
  */

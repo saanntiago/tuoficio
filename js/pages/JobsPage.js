@@ -1,5 +1,5 @@
 /**
- * Mis trabajos (RF11, RF12, RF13).
+ * Mis trabajos (RF11, RF13 / HU-10, HU-16, HU-17).
  * El técnico marca el servicio como finalizado; solo entonces el cliente puede
  * publicar una reseña. Cliente y técnico pueden reportar durante el servicio o
  * dentro de las 24 horas posteriores.

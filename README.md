@@ -74,24 +74,26 @@ En la pantalla de acceso también hay botones de **entrada rápida como empleado
 
 ### Cobertura de requisitos
 
-| Módulo | RF / HU relacionados |
-| --- | --- |
-| Autenticación, registro y roles | RF01, RF02 |
-| Directorio y búsqueda geolocalizada | RF03, HU-03 |
-| Favoritos | RF04 |
-| Perfil, hoja de vida y tarifas | RF05 |
-| Verificación de identidad | RF06, HU-06 |
-| Portafolio antes/después | RF07, HU-07 |
-| Disponibilidad del trabajador | RF08, HU-08 |
-| Solicitud directa y cotizaciones | RF09, RF10, RF15, HU-09 |
-| Mensajería y notificaciones | HU-10 |
-| Trabajos y finalización | RF11, RF12 |
-| Reseñas | RF11, HU-11, HU-12 |
-| Reportes y sanciones | RF13, HU-16, HU-17 |
-| Administración y verificación | HU-13, HU-14, HU-15 |
-| Registro de usuario y acceso con Google | RF01, HU-01, HU-02 |
+| RF | Funcionalidad | HU | Estado |
+| --- | --- | --- | --- |
+| RF01 | Registro por rol | HU-01 | Implementado; el documento y el teléfono se completan en el perfil |
+| RF02 | Perfil del trabajador, cobertura y visibilidad de contacto | HU-01 | Implementado |
+| RF03 | Catálogo, filtros y orden por experiencia, cercanía, calificación y disponibilidad | HU-06 | Implementado |
+| RF04 | Verificación y confianza | HU-05, HU-15 | Implementado con revisión manual; no hay integración real con MinTrabajo/Saber Hacer Vale |
+| RF05 | Chatbot para hoja de vida y recomendaciones | HU-02, HU-07 | Implementado para HV y recomendaciones; la asistencia para redactar una solicitud es guiada, no un formulario automático |
+| RF06 | Notificaciones de solicitudes y favoritos | HU-09, HU-11 | Notificaciones dentro de la app; no hay push ni correo |
+| RF07 | Portafolio antes/después | HU-04 | Implementado |
+| RF08 | Zonas y mapa interactivo | HU-06 | Implementado con Leaflet/OpenStreetMap; no usa Google Maps |
+| RF09 | Roles y control de permisos | HU-13 | Implementado con RBAC y reglas de Firestore |
+| RF10 | Disponibilidad y horarios | HU-03 | Implementado con Disponible, Medio tiempo y Ocupado |
+| RF11 | Reseñas y calificación de 1 a 5 | HU-10 | Implementado solo para trabajos finalizados |
+| RF12 | Tarifas orientativas y presupuesto previo | HU-08 | Implementado: visita diagnóstica, mano de obra y nota |
+| RF13 | Reportes de incidentes | HU-14, HU-16, HU-17 | Implementado para cliente y trabajador, activo o dentro de 24 h |
+| RF14 | Compartir perfil y contacto | HU-12 | Implementado con enlace público y WhatsApp |
+| RF15 | Cotización del cliente | HU-09 | Implementado con descripción, fecha, hora, lugar, presupuesto y duración |
+| HU-18 | Inicio de sesión con Google | HU-18 | Implementado en código; requiere habilitar Google en Firebase y dominios autorizados |
 
-La trazabilidad detallada de RF01–RF15 y HU-01–HU-18 está reflejada en los módulos de `js/pages/` y en los comentarios de `js/services/DomainServices.js`.
+La app cubre los flujos funcionales de las guías, pero hay tres diferencias de arquitectura que debes tener presentes al presentar: usa **Firestore** en lugar de MySQL, **Leaflet/OpenStreetMap** en lugar de Google Maps y **Firebase Auth** en lugar de un backend propio con middleware JWT. La verificación institucional con MinTrabajo/Saber Hacer Vale y las notificaciones push/correo están simuladas o pendientes.
 
 ---
 

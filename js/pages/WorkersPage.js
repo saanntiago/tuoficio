@@ -1,5 +1,5 @@
 /**
- * Directorio público de técnicos (RF03).
+ * Directorio público de técnicos (RF03, RF08 / HU-06).
  * Búsqueda combinada por oficio, zona, radio (Haversine), calificación,
  * verificación y disponibilidad, con vista de lista y mapa.
  */
@@ -369,7 +369,7 @@ class WorkersPage extends BasePage {
     if (w) this.shareWorker(w);
   }
 
-  /* ── Solicitud directa (RF09 / HU-09) ───────────────────── */
+  /* ── Solicitud directa (RF15 / HU-09) ───────────────────── */
 
   openRequest(workerId, workerName) {
     this._ui.openModal(`

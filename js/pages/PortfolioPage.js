@@ -1,5 +1,5 @@
 /**
- * Portafolio del trabajador (RF07 / HU-07).
+ * Portafolio del trabajador (RF07 / HU-04).
  * Cada proyecto muestra el antes y el después, permite adjuntar un video corto
  * y valida formato y peso (JPG/PNG ≤ 5 MB; video ≤ 50 MB).
  */

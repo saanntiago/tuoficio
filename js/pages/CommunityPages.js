@@ -221,7 +221,7 @@ class MessagesPage extends BasePage {
 }
 
 /**
- * Favoritos del cliente (RF04): perfiles guardados para contactar después.
+ * Favoritos del cliente (RF06, RF09): perfiles guardados para contactar después.
  */
 class FavoritesPage extends BasePage {
   async render(container) {
@@ -264,7 +264,7 @@ class FavoritesPage extends BasePage {
 }
 
 /**
- * Mapa de zonas (RF03): densidad de técnicos por localidad y acceso al
+ * Mapa de zonas (RF03, RF08): densidad de técnicos por localidad y acceso al
  * directorio filtrado por zona.
  */
 class MapPage extends BasePage {

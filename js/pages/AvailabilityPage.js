@@ -1,5 +1,5 @@
 /**
- * Disponibilidad del trabajador (RF08 / HU-08).
+ * Disponibilidad del trabajador (RF10 / HU-03).
  * El cambio de estado es inmediato y afecta el directorio, el mapa y las
  * recomendaciones que reciben los clientes.
  */

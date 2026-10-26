@@ -314,7 +314,7 @@ class ProfilePage extends BasePage {
     }
   }
 
-  /* ── Verificación (RF06 / HU-06) ────────────────────────── */
+  /* ── Verificación (RF04 / HU-05, HU-15) ────────────────────────── */
 
   openVerification() {
     this._ui.openModal(`
