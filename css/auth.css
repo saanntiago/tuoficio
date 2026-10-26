@@ -146,6 +146,88 @@
   .form-row  { grid-template-columns: 1fr; }
 }
 
+/* ── AUTH SHELL (TuOficio) ───────────────────────────────── */
+.auth-shell {
+  display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 400px);
+  gap: 32px; align-items: center; position: relative; z-index: 2;
+  max-width: 940px; width: 100%; padding: 24px;
+}
+.auth-shell .auth-card { max-width: 440px; margin: 0 auto; padding: 34px 32px; }
+.auth-aside {
+  color: var(--text2); padding: 18px 4px;
+}
+.auth-aside-kicker {
+  font-size: 10.5px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--primary); margin-bottom: 10px;
+}
+.auth-aside h2 {
+  font-family: 'Space Grotesk', sans-serif; font-size: 38px; line-height: 1.06;
+  font-weight: 700; color: var(--text); margin-bottom: 14px; letter-spacing: -.5px;
+}
+.auth-aside > p { font-size: 13.5px; color: var(--text3); line-height: 1.65; max-width: 360px; margin-bottom: 22px; }
+.auth-points { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+.auth-points li { display: flex; gap: 12px; align-items: flex-start; }
+.auth-points li > i {
+  width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,.6);
+  border: 1px solid rgba(33,32,28,.06); display: flex; align-items: center; justify-content: center;
+  color: var(--primary); font-size: 14px; flex-shrink: 0;
+}
+.auth-points strong { display: block; font-size: 12.5px; color: var(--text); }
+.auth-points span { font-size: 11.5px; color: var(--text3); line-height: 1.45; }
+.auth-aside-note {
+  margin-top: 26px; font-size: 10.5px; color: var(--text4);
+  display: flex; gap: 6px; align-items: center;
+}
+.auth-footer-links {
+  display: flex; justify-content: center; gap: 18px; margin-top: 22px;
+  padding-top: 16px; border-top: 1px solid var(--border);
+}
+.auth-footer-links a {
+  font-size: 11.5px; font-weight: 600; color: var(--text3); text-decoration: none;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.auth-footer-links a:hover { color: var(--primary); }
+
+/* ── DEMO PANEL ──────────────────────────────────────────── */
+.demo-panel {
+  margin-top: 18px; padding: 14px; border-radius: 14px;
+  background: rgba(184,145,74,.07); border: 1px solid rgba(184,145,74,.22);
+}
+.demo-panel-title { font-size: 12px; font-weight: 800; color: #6B5E45; display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.demo-panel p { font-size: 11px; color: var(--text3); line-height: 1.5; margin-bottom: 10px; }
+.demo-buttons { display: flex; flex-direction: column; gap: 6px; }
+.demo-buttons button {
+  display: flex; align-items: center; gap: 8px; padding: 8px 11px; border-radius: 9px;
+  border: 1px solid rgba(184,145,74,.25); background: rgba(255,255,255,.7);
+  font-family: inherit; font-size: 11.5px; font-weight: 600; color: var(--text2);
+  cursor: pointer; text-align: left; transition: var(--transition);
+}
+.demo-buttons button:hover { background: #fff; border-color: var(--warning); color: var(--text); }
+.demo-buttons i { color: var(--warning); width: 14px; text-align: center; }
+
+/* ── BANNERS ─────────────────────────────────────────────── */
+.local-banner {
+  position: fixed; bottom: 16px; left: 16px; z-index: 2200;
+  max-width: 380px; display: flex; gap: 10px; align-items: flex-start;
+  background: #21201C; color: #F7F6F2; border-radius: 13px; padding: 12px 14px;
+  font-size: 11.5px; line-height: 1.5; box-shadow: 0 12px 32px rgba(0,0,0,.3);
+}
+.local-banner > i { color: #D9C08A; margin-top: 2px; }
+.local-banner strong { color: #fff; }
+.local-banner a { color: #D9C08A; }
+.local-banner button { border: none; background: transparent; color: #9A958C; cursor: pointer; margin-left: auto; padding: 0 2px; }
+.boot-error {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 2500;
+  background: #A85B46; color: #fff; padding: 10px 16px; border-radius: 10px;
+  font-size: 12.5px; max-width: 90vw; box-shadow: 0 8px 24px rgba(0,0,0,.2);
+}
+
+@media (max-width: 960px) {
+  .auth-shell { grid-template-columns: minmax(0, 460px); justify-content: center; }
+  .auth-aside { display: none; }
+}
+
+
 /* ChambaYa — Responsive fixes */
 html, body { overflow-x: hidden; }
 

@@ -3,149 +3,367 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscar Técnicos - TuOficioCol</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="css/design-system.css">
-    <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/components.css">
-</head>
-<body class="bg-light">
+    <title>Buscar técnicos en Bogotá – TuOficioCol</title>
+    <meta name="description" content="Directorio de técnicos verificados por oficio, zona y distancia. Compara tarifas, reseñas y portafolios en TuOficioCol.">
 
-    <nav class="navbar bg-white shadow-sm sticky-top">
-        <div class="nav-container w-100 d-flex align-items-center">
-            <a href="index.html" class="logo mr-4">TuOficioCol</a>
-            <div class="search-bar flex-grow-1 mx-4 max-w-lg">
-                <input type="text" class="form-control" placeholder="¿Qué necesitas? (Ej. Plomero en Chapinero)">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/public.css">
+</head>
+<body class="pub-body">
+
+    <nav class="nav">
+        <div class="container nav-inner">
+            <a class="logo" href="index.html">
+                <span class="logo-mark"><i class="fa-solid fa-bolt"></i></span>
+                TuOficio<b>Col</b>
+            </a>
+            <div class="nav-links">
+                <a href="index.html">Inicio</a>
+                <a href="index.html#como-funciona">Cómo funciona</a>
+                <a href="buscar.html" class="is-active">Técnicos</a>
+                <a href="index.html#categorias">Categorías</a>
             </div>
-            <a href="dashboard-cliente.html" class="btn btn-outline btn-sm">Mi Cuenta</a>
+            <div class="nav-cta">
+                <a class="btn btn-ghost" href="app.html" data-account-link>Ingresar</a>
+                <a class="btn btn-primary" href="app.html">Publicar solicitud</a>
+                <button class="nav-burger" type="button" aria-label="Abrir menú" onclick="document.getElementById('navMobile').classList.toggle('open')">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
+        </div>
+        <div class="nav-mobile" id="navMobile">
+            <div class="container">
+                <a href="index.html">Inicio</a>
+                <a href="buscar.html">Directorio de técnicos</a>
+                <a href="index.html#como-funciona">Cómo funciona</a>
+                <a href="index.html#categorias">Categorías</a>
+                <a href="app.html" data-account-link>Ingresar</a>
+            </div>
         </div>
     </nav>
 
-    <div class="container-fluid mt-3">
-        <div class="row">
-            <!-- Filters -->
-            <div class="col-md-3">
-                <div class="card p-3 mb-4">
-                    <h4 class="mb-3">Filtros</h4>
-                    
-                    <div class="form-group mb-3">
-                        <label class="form-label">Categoría</label>
-                        <select class="form-control">
-                            <option value="">Todas</option>
-                            <option value="Plomería">Plomería</option>
-                            <option value="Electricidad">Electricidad</option>
-                            <option value="Limpieza">Limpieza</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group mb-3">
-                        <label class="form-label">Zona</label>
-                        <input type="text" class="form-control" placeholder="Ej. Suba, Teusaquillo">
-                    </div>
-
-                    <div class="form-group mb-3">
-                        <label class="form-label">Calificación Mínima</label>
-                        <select class="form-control">
-                            <option value="0">Cualquiera</option>
-                            <option value="4">4 Estrellas o más</option>
-                            <option value="4.5">4.5 Estrellas o más</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group mb-4">
-                        <label class="d-flex align-items-center">
-                            <input type="checkbox" class="mr-2"> Solo verificados
-                        </label>
-                    </div>
-
-                    <button class="btn btn-primary btn-full">Aplicar Filtros</button>
-                    <button class="btn btn-outline btn-full mt-2 border-0">Limpiar</button>
-                </div>
+    <header class="dir-hero">
+        <div class="container dir-hero-inner">
+            <div>
+                <span class="eyebrow">Directorio local</span>
+                <h1>Técnicos verificados cerca de ti</h1>
+                <p>Filtra por oficio, localidad y distancia. Los resultados se calculan con la ubicación real de cada profesional.</p>
             </div>
-
-            <!-- Results -->
-            <div class="col-md-9">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h2 class="mb-0">Resultados <span class="text-secondary text-sm font-weight-normal">(Mostrando 10)</span></h2>
-                    <div>
-                        <select class="form-control form-control-sm d-inline-block w-auto">
-                            <option>Recomendados</option>
-                            <option>Mejor Calificados</option>
-                            <option>Más Cercanos</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Tabs Map/List -->
-                <ul class="nav nav-tabs mb-3 d-flex" style="list-style:none; padding:0; border-bottom:1px solid var(--border)">
-                    <li style="margin-right:20px;"><a href="#" class="text-primary font-weight-bold" style="text-decoration:none; border-bottom:2px solid var(--primary); padding-bottom:5px; display:block;">Vista Lista</a></li>
-                    <li><a href="#" class="text-secondary" style="text-decoration:none;">Vista Mapa</a></li>
-                </ul>
-
-                <!-- Grid -->
-                <div class="row" id="search-results">
-                    <!-- Skeletons -->
-                    <div class="col-md-4 mb-4">
-                        <div class="card h-100 p-3">
-                            <div class="skeleton" style="height:100px; width:100px; border-radius:50%; margin:0 auto 15px;"></div>
-                            <div class="skeleton-text mb-2"></div>
-                            <div class="skeleton-text w-50 mx-auto"></div>
-                        </div>
-                    </div>
-                    <div class="col-md-4 mb-4">
-                        <div class="card h-100 p-3">
-                            <div class="skeleton" style="height:100px; width:100px; border-radius:50%; margin:0 auto 15px;"></div>
-                            <div class="skeleton-text mb-2"></div>
-                            <div class="skeleton-text w-50 mx-auto"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="text-center mt-4 mb-5">
-                    <button class="btn btn-outline">Cargar más resultados</button>
-                </div>
+            <div class="dir-search">
+                <input type="search" id="dirQuery" placeholder="Buscar por nombre, oficio o habilidad…" aria-label="Buscar técnico"/>
+                <button class="hs-submit" type="button" onclick="DirPage.searchNow()"><i class="fa-solid fa-magnifying-glass"></i></button>
             </div>
         </div>
-    </div>
+    </header>
+
+    <main class="container">
+        <div class="dir-layout">
+            <!-- Filtros -->
+            <aside class="filters-card" aria-label="Filtros del directorio">
+                <div class="filters-head">
+                    <h2><i class="fa-solid fa-sliders" style="color:var(--sage);margin-right:6px"></i>Filtros</h2>
+                    <button type="button" onclick="DirPage.reset()">Limpiar</button>
+                </div>
+                <div class="filter-group">
+                    <label for="fTrade">Oficio</label>
+                    <select id="fTrade" onchange="DirPage.apply()">
+                        <option value="">Todos los oficios</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="fZone">Zona / localidad</label>
+                    <select id="fZone" onchange="DirPage.apply()">
+                        <option value="">Toda Bogotá</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="fRadius">Radio de búsqueda</label>
+                    <select id="fRadius" onchange="DirPage.apply()">
+                        <option value="5">5 km</option>
+                        <option value="10">10 km</option>
+                        <option value="25">25 km</option>
+                        <option value="50">50 km</option>
+                        <option value="0">Sin límite</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="fRating">Calificación mínima</label>
+                    <select id="fRating" onchange="DirPage.apply()">
+                        <option value="0">Cualquiera</option>
+                        <option value="3">3★ o más</option>
+                        <option value="4">4★ o más</option>
+                        <option value="4.5">4.5★ o más</option>
+                    </select>
+                </div>
+                <label class="filter-switch"><input type="checkbox" id="fVerified" onchange="DirPage.apply()"/> Solo verificados</label>
+                <label class="filter-switch"><input type="checkbox" id="fAvailable" onchange="DirPage.apply()"/> Solo disponibles</label>
+                <div class="filter-tip">
+                    <i class="fa-solid fa-location-crosshairs"></i>
+                    El radio se mide desde el centro de la localidad elegida. Sin zona, se muestra toda la ciudad.
+                </div>
+            </aside>
+
+            <!-- Resultados -->
+            <section aria-live="polite">
+                <div class="dir-results-head">
+                    <div>
+                        <div class="dir-count" id="dirCount">Cargando técnicos…</div>
+                        <div class="dir-origin" id="dirOrigin"></div>
+                    </div>
+                    <div class="dir-controls">
+                        <div class="view-switch" role="group" aria-label="Vista de resultados">
+                            <button type="button" id="btnListView" class="active" onclick="DirPage.setView('list')"><i class="fa-solid fa-list"></i> Lista</button>
+                            <button type="button" id="btnMapView" onclick="DirPage.setView('map')"><i class="fa-solid fa-map"></i> Mapa</button>
+                        </div>
+                        <select class="dir-sort" id="fSort" onchange="DirPage.apply()" aria-label="Ordenar resultados">
+                            <option value="relevance">Relevancia</option>
+                            <option value="distance">Más cercano</option>
+                            <option value="rating">Mejor calificado</option>
+                            <option value="price">Visita más económica</option>
+                            <option value="experience">Más experiencia</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="dirGrid" class="dir-grid"></div>
+
+                <div id="dirMapWrap" class="dir-map-wrap hidden" style="display:none">
+                    <div id="dirMap"></div>
+                    <div class="map-legend-pub">
+                        <span><span class="map-dot" style="background:#3E6B4F"></span> Disponible</span>
+                        <span><span class="map-dot" style="background:#B8914A"></span> Medio tiempo</span>
+                        <span><span class="map-dot" style="background:#A85B46"></span> Ocupado</span>
+                        <span><i class="fa-solid fa-circle" style="color:#4E7A5C;font-size:7px"></i> Tu zona de búsqueda</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="pub-footer">
+        <div class="container">
+            <div class="pub-footer-bottom" style="border-top:none;margin-top:0;padding-top:0">
+                <small>© 2026 TuOficioCol · Bogotá, Colombia</small>
+                <div class="mode-note" id="modeNote">Cargando datos…</div>
+            </div>
+        </div>
+    </footer>
 
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="js/firebase-config.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="js/config/constants.js"></script>
+    <script src="js/data/seed.js"></script>
+    <script src="js/services/LocalStore.js"></script>
+    <script src="js/config/firebase-config.js"></script>
+    <script src="js/services/DatabaseService.js"></script>
+    <script src="js/public.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            const container = document.getElementById('search-results');
-            try {
-                const snap = await db.collection('trabajadores').limit(6).get();
-                container.innerHTML = '';
-                
-                if(snap.empty) {
-                    container.innerHTML = '<div class="col-12"><p>No se encontraron resultados.</p></div>';
-                    return;
-                }
+      const DirPage = (() => {
+        let workers = [];
+        let map = null;
+        let view = 'list';
+        let lastList = [];
+        let debounce = null;
 
-                snap.forEach(doc => {
-                    const w = doc.data();
-                    container.innerHTML += `
-                        <div class="col-md-4 mb-4">
-                            <div class="worker-card card h-100 p-3 text-center transition hover-shadow">
-                                <img src="${w.foto || 'assets/default-avatar.png'}" class="avatar avatar-lg mx-auto mb-3" style="width:80px;height:80px;">
-                                <h4 class="mb-1">${w.nombre || 'Trabajador'}</h4>
-                                <p class="text-primary text-sm font-weight-bold mb-2">${w.oficio}</p>
-                                <div class="text-warning mb-2">⭐ ${w.calificacionPromedio || '0.0'}</div>
-                                <div class="mt-auto">
-                                    <a href="perfil-trabajador.html?id=${doc.id}" class="btn btn-primary btn-full btn-sm">Ver Perfil</a>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-            } catch(e) {
-                console.error(e);
-                container.innerHTML = '<div class="col-12"><p>Error al cargar resultados.</p></div>';
-            }
-        });
+        const $ = id => document.getElementById(id);
+        const params = new URLSearchParams(location.search);
+
+        function fillSelects() {
+          $('fTrade').innerHTML = '<option value="">Todos los oficios</option>' +
+            CHAMBAYA.TRADES.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+          $('fZone').innerHTML = '<option value="">Toda Bogotá</option>' +
+            CHAMBAYA.ZONES.map(z => `<option value="${escapeHtml(z.name)}">${escapeHtml(z.name)}</option>`).join('');
+        }
+
+        function readParams() {
+          fillSelects();
+          const trade = params.get('trade') || '';
+          const zone = params.get('zone') || '';
+          const query = params.get('q') || '';
+          const radius = params.get('radius') || '5';
+          const rating = params.get('rating') || '0';
+          const sort = params.get('sort') || 'relevance';
+          if (trade) $('fTrade').value = trade;
+          if (zone) $('fZone').value = zone;
+          if ([...$('fRadius').options].some(o => o.value === radius)) $('fRadius').value = radius;
+          if ([...$('fRating').options].some(o => o.value === rating)) $('fRating').value = rating;
+          if ([...$('fSort').options].some(o => o.value === sort)) $('fSort').value = sort;
+          if (params.get('verified') === '1') $('fVerified').checked = true;
+          if (params.get('available') === '1') $('fAvailable').checked = true;
+          $('dirQuery').value = query;
+          if (params.get('view') === 'map') {
+            view = 'map';
+            $('btnMapView').classList.add('active');
+            $('btnListView').classList.remove('active');
+          }
+        }
+
+        function filters() {
+          return {
+            query: $('dirQuery').value.trim(),
+            trade: $('fTrade').value,
+            zone: $('fZone').value,
+            radiusKm: Number($('fRadius').value),
+            minRating: Number($('fRating').value),
+            onlyVerified: $('fVerified').checked,
+            onlyAvailable: $('fAvailable').checked,
+            sort: $('fSort').value,
+          };
+        }
+
+        function syncUrl() {
+          const f = filters();
+          const p = new URLSearchParams();
+          if (f.query) p.set('q', f.query);
+          if (f.trade) p.set('trade', f.trade);
+          if (f.zone) p.set('zone', f.zone);
+          if (f.zone && f.radiusKm !== 5) p.set('radius', String(f.radiusKm));
+          if (f.minRating) p.set('rating', String(f.minRating));
+          if (f.onlyVerified) p.set('verified', '1');
+          if (f.onlyAvailable) p.set('available', '1');
+          if (f.sort !== 'relevance') p.set('sort', f.sort);
+          if (view === 'map') p.set('view', 'map');
+          const qs = p.toString();
+          history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
+        }
+
+        function apply() {
+          const f = filters();
+          const list = PublicData.filter(workers, f);
+          lastList = list;
+          $('dirCount').innerHTML = `<strong>${list.length}</strong> técnico${list.length === 1 ? '' : 's'} encontrado${list.length === 1 ? '' : 's'}`;
+          const origin = zoneByName(f.zone);
+          $('dirOrigin').innerHTML = origin
+            ? `<i class="fa-solid fa-location-crosshairs"></i> Distancias desde ${escapeHtml(origin.name)} · radio ${f.radiusKm === 0 ? 'sin límite' : `${f.radiusKm} km`}`
+            : `<i class="fa-solid fa-location-dot"></i> Mostrando técnicos de toda Bogotá`;
+
+          renderList(list);
+          if (view === 'map') renderMap(list);
+          syncUrl();
+        }
+
+        function renderList(list) {
+          const grid = $('dirGrid');
+          if (!list.length) {
+            grid.innerHTML = `
+              <div class="dir-empty">
+                <i class="fa-solid fa-magnifying-glass-location"></i>
+                <h3>No encontramos técnicos con esos filtros</h3>
+                <p>Prueba con otro oficio, amplía el radio de búsqueda o desactiva los filtros de verificación y disponibilidad.</p>
+                <div class="dir-empty-actions">
+                  <button class="btn btn-primary" type="button" onclick="DirPage.widen()">Ampliar a 25 km</button>
+                  <button class="btn btn-ghost" type="button" onclick="DirPage.reset()">Limpiar filtros</button>
+                </div>
+              </div>`;
+            return;
+          }
+          grid.innerHTML = list.map(w => PublicUI.card(w)).join('');
+        }
+
+        function renderMap(list) {
+          const host = $('dirMap');
+          if (!host) return;
+          if (typeof L === 'undefined') {
+            host.innerHTML = '<div style="padding:40px;text-align:center;color:var(--mist)">El mapa no está disponible sin conexión. Usa la vista de lista.</div>';
+            return;
+          }
+          if (map) {
+            try { map.remove(); } catch (e) { /* ignorar */ }
+            map = null;
+          }
+          const origin = zoneByName($('fZone').value);
+          map = L.map('dirMap', { scrollWheelZoom: false }).setView(origin ? [origin.lat, origin.lng] : [4.65, -74.09], 12);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap', maxZoom: 18,
+          }).addTo(map);
+          if (origin) {
+            const radius = Number($('fRadius').value);
+            L.circle([origin.lat, origin.lng], {
+              radius: (radius > 0 ? radius : 25) * 1000,
+              color: '#4E7A5C', fillColor: '#4E7A5C', fillOpacity: .05, weight: 1.4, dashArray: '5 5',
+            }).addTo(map);
+            L.marker([origin.lat, origin.lng], {
+              icon: L.divIcon({ className: '', html: '<i class="fa-solid fa-crosshairs" style="color:#4E7A5C;font-size:17px"></i>', iconSize: [20, 20] }),
+            }).addTo(map).bindPopup(`Búsqueda desde ${escapeHtml(origin.name)}`);
+          }
+          const colors = { Disponible: '#3E6B4F', 'Medio tiempo': '#B8914A', Ocupado: '#A85B46' };
+          list.forEach(w => {
+            if (w.lat == null || w.lng == null) return;
+            L.circleMarker([w.lat, w.lng], {
+              radius: 9, color: '#F7F6F2', weight: 2.5,
+              fillColor: colors[w.availability] || '#3A3A38', fillOpacity: .95,
+            }).addTo(map).bindPopup(`
+              <div class="pub-popup-name">${escapeHtml(w.name)}</div>
+              <div class="pub-popup-sub">${escapeHtml(w.trade)} · ${escapeHtml(w.zone)}${w.distanceKm != null ? ` · ${w.distanceKm.toFixed(1)} km` : ''}</div>
+              <button class="pub-popup-link" onclick="location.href='perfil.html?id=${encodeURIComponent(w.id)}'">Ver perfil <i class="fa-solid fa-arrow-right"></i></button>`);
+          });
+          setTimeout(() => { try { map.invalidateSize(); } catch (e) { /* ignorar */ } }, 220);
+        }
+
+        function setView(next) {
+          view = next;
+          const list = $('dirGrid');
+          const wrap = $('dirMapWrap');
+          const isMap = next === 'map';
+          $('btnListView').classList.toggle('active', !isMap);
+          $('btnMapView').classList.toggle('active', isMap);
+          list.style.display = isMap ? 'none' : '';
+          wrap.style.display = isMap ? '' : 'none';
+          wrap.classList.toggle('hidden', !isMap);
+          if (isMap) renderMap(lastList);
+          syncUrl();
+        }
+
+        function reset() {
+          $('dirQuery').value = '';
+          $('fTrade').value = '';
+          $('fZone').value = '';
+          $('fRadius').value = '5';
+          $('fRating').value = '0';
+          $('fVerified').checked = false;
+          $('fAvailable').checked = false;
+          $('fSort').value = 'relevance';
+          apply();
+        }
+
+        function widen() {
+          $('fRadius').value = '25';
+          apply();
+        }
+
+        function searchNow() {
+          clearTimeout(debounce);
+          apply();
+        }
+
+        async function init() {
+          await PublicUI.boot();
+          readParams();
+          workers = await PublicData.workers();
+
+          const counts = {};
+          workers.forEach(w => { if (w.trade) counts[w.trade] = (counts[w.trade] || 0) + 1; });
+          [...$('fTrade').options].forEach(o => {
+            if (o.value && counts[o.value]) o.textContent = `${o.value} (${counts[o.value]})`;
+          });
+
+          $('dirQuery').addEventListener('input', () => {
+            clearTimeout(debounce);
+            debounce = setTimeout(apply, 260);
+          });
+          apply();
+          if (view === 'map') setView('map');
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+        return { apply, reset, widen, setView, searchNow };
+      })();
     </script>
 </body>
 </html>

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfil del técnico – TuOficioCol</title>
+    <meta name="description" content="Perfil público de un técnico de TuOficioCol: verificación, tarifas, cobertura, portafolio antes y después y reseñas reales.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/public.css">
+</head>
+<body class="pub-body">
+
+    <nav class="nav">
+        <div class="container nav-inner">
+            <a class="logo" href="index.html">
+                <span class="logo-mark"><i class="fa-solid fa-bolt"></i></span>
+                TuOficio<b>Col</b>
+            </a>
+            <div class="nav-links">
+                <a href="index.html">Inicio</a>
+                <a href="index.html#como-funciona">Cómo funciona</a>
+                <a href="buscar.html" class="is-active">Técnicos</a>
+                <a href="index.html#categorias">Categorías</a>
+            </div>
+            <div class="nav-cta">
+                <a class="btn btn-ghost" href="app.html" data-account-link>Ingresar</a>
+                <a class="btn btn-primary" href="app.html">Publicar solicitud</a>
+                <button class="nav-burger" type="button" aria-label="Abrir menú" onclick="document.getElementById('navMobile').classList.toggle('open')">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
+        </div>
+        <div class="nav-mobile" id="navMobile">
+            <div class="container">
+                <a href="index.html">Inicio</a>
+                <a href="buscar.html">Directorio de técnicos</a>
+                <a href="index.html#como-funciona">Cómo funciona</a>
+                <a href="index.html#categorias">Categorías</a>
+                <a href="app.html" data-account-link>Ingresar</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pub-main" id="profileRoot">
+        <div class="container" style="padding:80px 0">
+            <div class="page-loading"><span class="spinner dark"></span></div>
+        </div>
+    </main>
+
+    <footer class="pub-footer">
+        <div class="container">
+            <div class="pub-footer-bottom" style="border-top:none;margin-top:0;padding-top:0">
+                <small>© 2026 TuOficioCol · Bogotá, Colombia</small>
+                <div class="mode-note" id="modeNote">Cargando datos…</div>
+            </div>
+        </div>
+    </footer>
+
+    <div class="pub-lightbox" id="pubLightbox" onclick="if(event.target===this)ProfilePage.closeLightbox()">
+        <button type="button" aria-label="Cerrar" onclick="ProfilePage.closeLightbox()"><i class="fa-solid fa-xmark"></i></button>
+        <img id="pubLightboxImg" src="" alt=""/>
+        <div class="lb-caption" id="pubLightboxCaption"></div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="js/config/constants.js"></script>
+    <script src="js/data/seed.js"></script>
+    <script src="js/services/LocalStore.js"></script>
+    <script src="js/config/firebase-config.js"></script>
+    <script src="js/services/DatabaseService.js"></script>
+    <script src="js/public.js"></script>
+    <script>
+      const ProfilePage = (() => {
+        let worker = null;
+        let reviews = [];
+        let map = null;
+
+        const $ = id => document.getElementById(id);
+        const hasSession = () => {
+          try { return Boolean(localStorage.getItem('tuoficio_session_uid')); } catch (e) { return false; }
+        };
+
+        function notFound() {
+          document.title = 'Perfil no encontrado – TuOficioCol';
+          $('profileRoot').innerHTML = `
+            <div class="container profile-notfound">
+              <i class="fa-solid fa-user-slash"></i>
+              <h1>Este perfil no está disponible</h1>
+              <p>El técnico pudo haber desactivado su cuenta o el enlace está incompleto.</p>
+              <a class="btn btn-primary" href="buscar.html">Volver al directorio <i class="fa-solid fa-arrow-right"></i></a>
+            </div>`;
+        }
+
+        function portfolioSection() {
+          if (!worker.portfolio.length) {
+            return `<section class="pub-card-block">
+              <h2><i class="fa-solid fa-images"></i> Portafolio de trabajos</h2>
+              <div class="review-empty"><i class="fa-regular fa-images"></i>Este técnico aún no ha publicado trabajos con fotos de antes y después.</div>
+            </section>`;
+          }
+          const items = worker.portfolio.map((p, i) => {
+            const before = p.antes || placeholderImage('Antes');
+            const after = p.despues || placeholderImage('Después');
+            const title = escapeHtml(p.titulo || `Trabajo ${i + 1}`);
+            const desc = escapeHtml(p.descripcion || '');
+            return `<article class="pf-item">
+              <div class="pf-pair">
+                <figure>
+                  <img src="${escapeHtml(before)}" alt="Antes: ${title}" loading="lazy"
+                    onclick="ProfilePage.openLightbox(this.src, 'Antes · ${title.replace(/'/g, '&#39;')}')"/>
+                  <figcaption>Antes</figcaption>
+                </figure>
+                <figure>
+                  <img src="${escapeHtml(after)}" alt="Después: ${title}" loading="lazy"
+                    onclick="ProfilePage.openLightbox(this.src, 'Después · ${title.replace(/'/g, '&#39;')}')"/>
+                  <figcaption>Después</figcaption>
+                </figure>
+              </div>
+              <div class="pf-body">
+                <h4>${title}</h4>
+                ${desc ? `<p>${desc}</p>` : ''}
+                ${p.fecha ? `<time datetime="${escapeHtml(p.fecha)}"><i class="fa-regular fa-calendar"></i> ${formatDate(p.fecha)}</time>` : ''}
+              </div>
+            </article>`;
+          }).join('');
+          return `<section class="pub-card-block">
+            <h2><i class="fa-solid fa-images"></i> Portafolio antes y después <span style="font-family:var(--f-body);font-size:11.5px;color:var(--faint);font-weight:600">(${worker.portfolio.length})</span></h2>
+            <div class="portfolio-grid-pub">${items}</div>
+          </section>`;
+        }
+
+        function coverageSection() {
+          const coverage = worker.coverage.length ? worker.coverage : [worker.zone];
+          return `<section class="pub-card-block">
+            <h2><i class="fa-solid fa-location-dot"></i> Zona de cobertura</h2>
+            <div class="coverage-list">${coverage.filter(Boolean).map(c => `<span><i class="fa-solid fa-check" style="color:var(--sage);margin-right:4px"></i>${escapeHtml(c)}</span>`).join('')}</div>
+            ${worker.lat != null && worker.lng != null ? '<div id="profileMap"></div>' : '<p class="muted small">El técnico no ha registrado su ubicación exacta.</p>'}
+          </section>`;
+        }
+
+        function scheduleText() {
+          const s = worker.schedule;
+          if (!s || !(s.dias || []).length) return 'Horario a convenir';
+          return `${s.dias.join(', ')} · ${s.inicio || '—'} – ${s.fin || '—'}`;
+        }
+
+        function reviewsSection(rating) {
+          const list = reviews.length
+            ? reviews.map((r, idx) => {
+                const color = r.clientColor || ['#4E7A5C', '#8C8C88', '#A89878', '#6E6B64'][idx % 4];
+                return `<article class="pub-review">
+                  <div class="review-head">
+                    <span class="review-ava" style="background:${escapeHtml(color)}">${escapeHtml(initialsOf(r.clientName || 'Cliente'))}</span>
+                    <div class="review-who">
+                      <b>${escapeHtml(r.clientName || 'Cliente de TuOficioCol')}</b>
+                      <span>${r.date ? formatDate(r.date) : 'Reseña verificada'}</span>
+                    </div>
+                    <div class="review-stars">${'★'.repeat(Math.max(1, Math.min(5, Number(r.rating) || 5)))}${'☆'.repeat(5 - Math.max(1, Math.min(5, Number(r.rating) || 5)))}</div>
+                  </div>
+                  <div class="review-body">${r.text ? escapeHtml(r.text) : '<span class="muted">Sin comentario.</span>'}</div>
+                </article>`;
+              }).join('')
+            : `<div class="review-empty"><i class="fa-regular fa-star"></i>Aún no hay reseñas publicadas. Las reseñas solo se habilitan cuando un trabajo con este técnico finaliza.</div>`;
+
+          return `<section class="pub-card-block" id="resenas">
+            <h2><i class="fa-solid fa-star"></i> Reseñas de clientes</h2>
+            ${reviews.length ? `<div class="review-summary">
+              <div class="review-score">${rating.stars.toFixed(1)}</div>
+              <div>
+                ${PublicUI.stars(rating.stars, rating.count)}
+                <div class="muted small" style="margin-top:4px">${rating.count} reseña${rating.count === 1 ? '' : 's'} de trabajos finalizados</div>
+              </div>
+            </div>` : ''}
+            ${list}
+          </section>`;
+        }
+
+        function render(rating) {
+          const coverage = worker.coverage.length ? worker.coverage : [worker.zone].filter(Boolean);
+          const phone = worker.whatsapp || worker.phone;
+          const showWhats = worker.contactVisible && phone;
+          const message = `Hola ${worker.name.split(' ')[0]}, te contacto desde TuOficioCol por un servicio de ${worker.trade}. ¿Podemos coordinar?`;
+          const session = hasSession();
+          const quoteHref = 'app.html';
+          const quoteLabel = session ? 'Solicitar cotización' : 'Inicia sesión para cotizar';
+          const quoteIcon = session ? 'fa-calendar-plus' : 'fa-right-to-bracket';
+
+          $('profileRoot').innerHTML = `
+            <header class="profile-band">
+              <div class="container">
+                <div class="profile-breadcrumb">
+                  <a href="index.html">Inicio</a><i class="fa-solid fa-chevron-right" style="font-size:8px"></i>
+                  <a href="buscar.html">Técnicos</a><i class="fa-solid fa-chevron-right" style="font-size:8px"></i>
+                  <span>${escapeHtml(worker.trade)} en ${escapeHtml(worker.zone || 'Bogotá')}</span>
+                </div>
+                <div class="profile-head">
+                  ${PublicUI.avatar(worker, 108)}
+                  <div class="profile-head-main">
+                    <div class="profile-name-row">
+                      <h1>${escapeHtml(worker.name)}</h1>
+                      ${worker.verified
+                        ? '<span class="verified-pill"><i class="fa-solid fa-shield-halved"></i> Verificado</span>'
+                        : ''}
+                    </div>
+                    <div class="profile-trade"><i class="fa-solid ${tradeIcon(worker.trade)}"></i>${escapeHtml(worker.trade)}${worker.experience ? ` · ${worker.experience} años de experiencia` : ''}</div>
+                    <div class="profile-meta">
+                      ${PublicUI.stars(rating.stars, rating.count, 12)}
+                      <span class="pm-chip"><i class="fa-solid fa-location-dot"></i>${escapeHtml(worker.zone || 'Bogotá')}</span>
+                      <span class="pm-chip">${PublicUI.availability(worker)}</span>
+                      ${worker.views ? `<span class="pm-chip"><i class="fa-regular fa-eye"></i>${worker.views} visitas</span>` : ''}
+                    </div>
+                  </div>
+                  <div class="profile-head-actions">
+                    <button class="btn btn-ghost" type="button" onclick="ProfilePage.share()"><i class="fa-solid fa-share-nodes"></i> Compartir</button>
+                    <button class="btn btn-primary" type="button" onclick="location.href='${quoteHref}'"><i class="fa-solid ${quoteIcon}"></i> ${quoteLabel}</button>
+                  </div>
+                </div>
+              </div>
+            </header>
+
+            <div class="container profile-layout-pub">
+              <div>
+                <section class="pub-card-block">
+                  <h2><i class="fa-solid fa-user-tie"></i> Sobre ${escapeHtml(worker.name.split(' ')[0])}</h2>
+                  <p>${escapeHtml(worker.description || 'Este técnico aún no ha agregado una descripción de sus servicios.')}</p>
+                </section>
+
+                <section class="pub-card-block">
+                  <h2><i class="fa-solid fa-tags"></i> Tarifas indicativas</h2>
+                  <div class="rate-grid">
+                    <div class="rate-box">
+                      <span>Visita diagnóstica</span>
+                      <strong>${worker.visitFee > 0 ? formatMoney(worker.visitFee) : 'Sin costo'}</strong>
+                    </div>
+                    <div class="rate-box">
+                      <span>Hora de trabajo</span>
+                      <strong>${worker.hourlyFee > 0 ? formatMoney(worker.hourlyFee) : 'A convenir'}</strong>
+                    </div>
+                  </div>
+                  ${worker.feeNote ? `<p class="rate-note"><i class="fa-solid fa-circle-info"></i>${escapeHtml(worker.feeNote)}</p>` : ''}
+                  <p class="rate-note"><i class="fa-solid fa-scale-balanced"></i>Son valores de referencia. El presupuesto final se acuerda directamente con el técnico.</p>
+                </section>
+
+                ${worker.skills.length ? `<section class="pub-card-block">
+                  <h2><i class="fa-solid fa-screwdriver-wrench"></i> Habilidades</h2>
+                  <div class="skill-tags">${worker.skills.map(s => `<span>${escapeHtml(s)}</span>`).join('')}</div>
+                </section>` : ''}
+
+                ${portfolioSection()}
+                ${reviewsSection(rating)}
+                ${coverageSection()}
+              </div>
+
+              <aside class="pub-side">
+                <div class="contact-card">
+                  <div class="cc-eyebrow">Contacto directo</div>
+                  <h3>¿Necesitas a ${escapeHtml(worker.name.split(' ')[0])}?</h3>
+                  <p>Envía una solicitud con fecha, hora, dirección y presupuesto. El técnico recibirá una notificación al instante.</p>
+                  ${showWhats
+                    ? `<a class="btn btn-whatsapp" href="${whatsappLink(phone, message)}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> Escribir por WhatsApp</a>
+                       <div style="height:8px"></div>`
+                    : `<div class="pub-alert" style="background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.75)"><i class="fa-solid fa-lock"></i><span>Este técnico prefiere recibir solicitudes por la plataforma.</span></div>`}
+                  <a class="btn btn-primary" href="${quoteHref}"><i class="fa-solid ${quoteIcon}"></i> ${quoteLabel}</a>
+                  <div style="height:8px"></div>
+                  <button class="btn btn-ghost-light" type="button" onclick="ProfilePage.share()"><i class="fa-solid fa-share-nodes"></i> Compartir perfil</button>
+                  <div class="cc-divider"></div>
+                  <div class="cc-line"><i class="fa-solid fa-location-dot"></i><div><strong>Cobertura</strong>${escapeHtml(coverage.join(', ') || 'Bogotá')}</div></div>
+                  <div class="cc-line"><i class="fa-regular fa-clock"></i><div><strong>Horario</strong>${escapeHtml(scheduleText())}</div></div>
+                  <div class="cc-line"><i class="fa-solid fa-shield-halved"></i><div><strong>Confianza</strong>${worker.verified ? 'Documento y rostro verificados' : 'Perfil activo en TuOficioCol'}</div></div>
+                  <p class="cc-note">TuOficioCol no cobra comisiones sobre el trabajo. Acuerda el precio directamente con el profesional.</p>
+                </div>
+
+                <div class="side-soft">
+                  <h3><i class="fa-solid fa-circle-info" style="color:var(--sage);margin-right:6px"></i> Cómo contratar</h3>
+                  <div class="cc-line-soft"><i class="fa-solid fa-1"></i><span>Crea tu cuenta gratis como cliente.</span></div>
+                  <div class="cc-line-soft"><i class="fa-solid fa-2"></i><span>Envía la solicitud con los detalles del trabajo.</span></div>
+                  <div class="cc-line-soft"><i class="fa-solid fa-3"></i><span>Acuerda el precio y la fecha directamente.</span></div>
+                  <div class="cc-line-soft"><i class="fa-solid fa-4"></i><span>Al finalizar, deja tu reseña verificada.</span></div>
+                  <a class="btn btn-ghost btn-full" href="app.html" style="margin-top:10px"><i class="fa-solid fa-user-plus"></i> Crear cuenta</a>
+                </div>
+
+                <div class="side-soft">
+                  <h3><i class="fa-solid fa-triangle-exclamation" style="color:var(--gold);margin-right:6px"></i> Seguridad</h3>
+                  <p class="muted small" style="line-height:1.6">No envíes anticipos sin haber acordado el trabajo. Puedes reportar un perfil desde la aplicación si detectas un comportamiento irregular.</p>
+                </div>
+              </aside>
+            </div>`;
+
+          document.title = `${worker.name} · ${worker.trade} – TuOficioCol`;
+          const meta = document.querySelector('meta[name="description"]');
+          if (meta) meta.setAttribute('content', `${worker.name}, ${worker.trade} en ${worker.zone || 'Bogotá'}. ${rating.count} reseñas, tarifas desde ${worker.visitFee > 0 ? formatMoney(worker.visitFee) : 'sin costo de visita'}.`);
+
+          initMap();
+          PublicUI.reveal();
+        }
+
+        function initMap() {
+          if (worker.lat == null || worker.lng == null) return;
+          const host = $('profileMap');
+          if (!host || typeof L === 'undefined') return;
+          if (map) { try { map.remove(); } catch (e) { /* ignorar */ } }
+          map = L.map('profileMap', { scrollWheelZoom: false }).setView([worker.lat, worker.lng], 12);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap', maxZoom: 18,
+          }).addTo(map);
+          L.circle([worker.lat, worker.lng], {
+            radius: 5000, color: '#4E7A5C', fillColor: '#4E7A5C', fillOpacity: .06, weight: 1.4, dashArray: '5 5',
+          }).addTo(map);
+          L.circleMarker([worker.lat, worker.lng], {
+            radius: 10, color: '#fff', weight: 3, fillColor: '#3E6B4F', fillOpacity: 1,
+          }).addTo(map).bindPopup(`<strong>${escapeHtml(worker.name)}</strong><br>${escapeHtml(worker.trade)}`);
+          (worker.coverage || []).forEach(name => {
+            const z = zoneByName(name);
+            if (!z || (Math.abs(z.lat - worker.lat) < 0.01 && Math.abs(z.lng - worker.lng) < 0.01)) return;
+            L.circleMarker([z.lat, z.lng], {
+              radius: 5, color: '#fff', weight: 2, fillColor: '#B8914A', fillOpacity: .95,
+            }).addTo(map).bindTooltip(name, { direction: 'top' });
+          });
+          setTimeout(() => { try { map.invalidateSize(); } catch (e) { /* ignorar */ } }, 260);
+        }
+
+        async function init() {
+          await PublicUI.boot();
+          const id = PublicData.queryParam('id');
+          if (!id) return notFound();
+          worker = await PublicData.worker(id);
+          if (!worker) return notFound();
+          reviews = await PublicData.reviews(id);
+          const rating = PublicData.ratingOf(worker, reviews);
+          render(rating);
+        }
+
+        function openLightbox(src, caption) {
+          const box = $('pubLightbox');
+          $('pubLightboxImg').src = src;
+          $('pubLightboxCaption').textContent = caption || '';
+          box.classList.add('open');
+          document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+          $('pubLightbox').classList.remove('open');
+          document.body.style.overflow = '';
+        }
+
+        function share() {
+          if (worker) PublicUI.share(worker);
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('keydown', e => {
+          if (e.key === 'Escape') closeLightbox();
+        });
+        return { openLightbox, closeLightbox, share };
+      })();
+    </script>
+</body>
+</html>

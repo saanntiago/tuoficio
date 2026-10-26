@@ -36,15 +36,17 @@ function initFirebase() {
   const db = firebase.firestore();
   db.settings({ ignoreUndefinedProperties: true });
   window.ChambaDB = db;
-  window.ChambaAuth = firebase.auth();
-  window.ChambaGoogleProvider = new firebase.auth.GoogleAuthProvider();
-  window.ChambaGoogleProvider.setCustomParameters({ prompt: 'select_account' });
-  window.ChambaGoogleProvider.addScope('email');
-  window.ChambaGoogleProvider.addScope('profile');
+  if (typeof firebase.auth === 'function') {
+    window.ChambaAuth = firebase.auth();
+    window.ChambaGoogleProvider = new firebase.auth.GoogleAuthProvider();
+    window.ChambaGoogleProvider.setCustomParameters({ prompt: 'select_account' });
+    window.ChambaGoogleProvider.addScope('email');
+    window.ChambaGoogleProvider.addScope('profile');
+  }
   return {
     db,
-    auth: window.ChambaAuth,
-    googleProvider: window.ChambaGoogleProvider,
+    auth: window.ChambaAuth || null,
+    googleProvider: window.ChambaGoogleProvider || null,
     configured: isFirebaseConfigured(),
     googleMapsKey: GOOGLE_MAPS_API_KEY,
   };

@@ -1,87 +1,161 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    /* ── Helpers ───────────────────────────────────────────── */
     function signedIn() {
       return request.auth != null;
     }
     function isMe(uid) {
       return signedIn() && request.auth.uid == uid;
     }
+    function userPath(uid) {
+      return /databases/$(database)/documents/usuarios/$(uid);
+    }
     function myUser() {
-      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+      return get(userPath(request.auth.uid)).data;
     }
     function isAdmin() {
-      return signedIn() && myUser().rol == 'admin';
+      return signedIn() && exists(userPath(request.auth.uid)) && myUser().rol == 'admin';
+    }
+    function isActive() {
+      return signedIn() && (!exists(userPath(request.auth.uid)) || myUser().activo != false);
     }
 
+    /* ── Usuarios ──────────────────────────────────────────── */
     match /usuarios/{userId} {
-      allow read: if signedIn();
+      // Cada usuario ve su cuenta; el directorio solo expone cuentas de técnicos.
+      allow read: if signedIn() && (isMe(userId) || isAdmin() || resource.data.rol == 'trabajador');
       allow create: if isMe(userId);
       allow update: if isMe(userId) || isAdmin();
       allow delete: if isAdmin();
     }
 
+    /* ── Directorio público de técnicos (RF03) ─────────────── */
     match /trabajadores/{workerId} {
       allow read: if true;
-      allow create, update: if isMe(workerId) || isAdmin();
+      allow create, update: if isActive() && (isMe(workerId) || isAdmin());
       allow delete: if isAdmin();
     }
 
+    /* ── Hojas de vida ─────────────────────────────────────── */
     match /hojasDeVida/{cvId} {
-      allow read: if signedIn();
-      allow write: if isMe(cvId) || isAdmin();
+      allow read: if signedIn() && (isMe(cvId) || isAdmin());
+      allow write: if isActive() && (isMe(cvId) || isAdmin());
     }
 
+    /* ── Solicitudes de cotización (RF09) ──────────────────── */
     match /cotizaciones/{id} {
       allow read: if signedIn();
-      allow create: if signedIn();
-      allow update: if signedIn() && (
+      allow create: if isActive() &&
+        (request.resource.data.clientId == request.auth.uid || isAdmin());
+      allow update: if isActive() && (
+        isAdmin() ||
         request.auth.uid == resource.data.clientId ||
-        request.auth.uid == resource.data.clienteId ||
-        isAdmin()
+        // El técnico solo puede incrementar el contador de ofertas.
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['ofertasCount', 'updatedAt'])
       );
-      allow delete: if signedIn() && (
-        request.auth.uid == resource.data.clientId || isAdmin()
-      );
+      allow delete: if isActive() && (request.auth.uid == resource.data.clientId || isAdmin());
     }
 
+    /* ── Postulaciones / ofertas de técnicos (RF15) ────────── */
+    match /postulaciones/{id} {
+      allow read: if signedIn();
+      allow create: if isActive() && request.resource.data.trabajadorId == request.auth.uid;
+      allow update: if isActive() && (
+        isAdmin() ||
+        request.auth.uid == resource.data.trabajadorId ||
+        get(/databases/$(database)/documents/cotizaciones/$(resource.data.cotizacionId)).data.clientId == request.auth.uid
+      );
+      allow delete: if isAdmin();
+    }
+
+    /* ── Sugerencias directas de un cliente a un técnico (RF09) ── */
     match /sugerencias/{id} {
       allow read: if signedIn() && (
         request.auth.uid == resource.data.trabajadorId ||
         request.auth.uid == resource.data.empleadorId ||
         isAdmin()
       );
-      allow create: if signedIn();
-      allow update: if signedIn() && (
+      allow create: if isActive() && request.resource.data.empleadorId == request.auth.uid;
+      allow update: if isActive() && (
         request.auth.uid == resource.data.trabajadorId ||
         request.auth.uid == resource.data.empleadorId ||
         isAdmin()
       );
+      allow delete: if isAdmin();
     }
 
+    /* ── Trabajos / servicios (RF11, RF12) ─────────────────── */
+    match /trabajos/{id} {
+      allow read: if signedIn() && (
+        isAdmin() ||
+        request.auth.uid == resource.data.clientId ||
+        request.auth.uid == resource.data.trabajadorId
+      );
+      allow create: if isActive() && (
+        isAdmin() ||
+        request.resource.data.clientId == request.auth.uid ||
+        request.resource.data.trabajadorId == request.auth.uid
+      );
+      allow update: if isActive() && (
+        isAdmin() ||
+        request.auth.uid == resource.data.clientId ||
+        request.auth.uid == resource.data.trabajadorId
+      );
+      allow delete: if isAdmin();
+    }
+
+    /* ── Reseñas (RF11, HU-13) ─────────────────────────────── */
     match /resenas/{id} {
       allow read: if true;
-      allow create: if signedIn();
-      allow update, delete: if signedIn() && request.auth.uid == resource.data.clienteId;
+      // Solo el cliente de un trabajo finalizado y sin reseña puede calificar.
+      allow create: if isActive() && (
+        isAdmin() ||
+        (
+          request.resource.data.clienteId == request.auth.uid &&
+          request.resource.data.trabajoId != null &&
+          get(/databases/$(database)/documents/trabajos/$(request.resource.data.trabajoId)).data.clientId == request.auth.uid &&
+          get(/databases/$(database)/documents/trabajos/$(request.resource.data.trabajoId)).data.trabajadorId == request.resource.data.trabajadorId &&
+          get(/databases/$(database)/documents/trabajos/$(request.resource.data.trabajoId)).data.estado == 'Finalizado' &&
+          get(/databases/$(database)/documents/trabajos/$(request.resource.data.trabajoId)).data.resenaId == null
+        )
+      );
+      allow update, delete: if isActive() && (isAdmin() || request.auth.uid == resource.data.clienteId);
     }
 
+    /* ── Reportes (RF13, HU-14) ────────────────────────────── */
     match /reportes/{id} {
-      allow create: if signedIn();
-      allow read, update, delete: if signedIn();
+      allow create: if isActive() && request.resource.data.reportanteId == request.auth.uid;
+      allow read, update, delete: if isAdmin();
     }
 
+    /* ── Verificación de identidad (RF06, HU-06) ───────────── */
+    match /verificaciones/{id} {
+      allow read: if signedIn() && (
+        isAdmin() || request.auth.uid == resource.data.trabajadorId
+      );
+      allow create: if isActive() && request.resource.data.trabajadorId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    /* ── Notificaciones ────────────────────────────────────── */
     match /notificaciones/{id} {
-      allow read, update, delete: if signedIn() && request.auth.uid == resource.data.usuarioId;
-      allow create: if signedIn();
+      allow read, update, delete: if isActive() && request.auth.uid == resource.data.usuarioId;
+      allow create: if isActive();
     }
 
+    /* ── Favoritos ─────────────────────────────────────────── */
     match /favoritos/{userId} {
       allow read, write: if isMe(userId);
     }
 
+    /* ── Mensajería interna ────────────────────────────────── */
     match /conversaciones/{id} {
-      allow read, write: if signedIn() && request.auth.uid in resource.data.participants;
+      allow read, delete: if signedIn() && request.auth.uid in resource.data.participants;
       allow create: if signedIn() && request.auth.uid in request.resource.data.participants;
+      allow update: if signedIn() && request.auth.uid in resource.data.participants;
     }
 
     match /mensajes/{id} {

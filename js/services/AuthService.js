@@ -1,8 +1,26 @@
+/**
+ * Autenticación.
+ *
+ * Modo firebase: Firebase Auth (correo/contraseña y Google) + perfil en Firestore.
+ * Modo local:    sesión simulada en localStorage para poder demostrar la
+ *                plataforma sin depender de la configuración de Firebase.
+ */
 class AuthService {
   constructor(db) {
     this._db = db;
     this.currentUser = null;
+    this.mode = db.isLocal ? 'local' : 'firebase';
+    this._sessionKey = 'tuoficio_session_uid';
+    this._localListeners = new Set();
   }
+
+  _emitLocal() {
+    this._localListeners.forEach(cb => {
+      try { cb(this.currentUser); } catch (e) { console.warn(e); }
+    });
+  }
+
+  /* ── Infraestructura ─────────────────────────────────────── */
 
   get _auth() {
     if (!window.ChambaAuth) throw new Error('Firebase Auth no está inicializado.');
@@ -12,14 +30,15 @@ class AuthService {
   _mapError(err) {
     const map = {
       'auth/invalid-api-key': 'Firebase no está configurado. Pega tu firebaseConfig en js/config/firebase-config.js',
-      'auth/unauthorized-domain': 'Agrega este dominio en Firebase → Authentication → Authorized domains (localhost).',
+      'auth/unauthorized-domain': 'Agrega este dominio en Firebase → Authentication → Authorized domains.',
       'auth/popup-closed-by-user': 'Cerraste la ventana de Google. Intenta de nuevo.',
       'auth/cancelled-popup-request': 'Se canceló el inicio de sesión.',
       'auth/popup-blocked': 'El navegador bloqueó la ventana de Google. Permite popups.',
-      'auth/operation-not-allowed': 'Habilita Google (y/o Email) en Firebase Authentication → Sign-in method.',
+      'auth/operation-not-allowed': 'Habilita Google (y/o Correo) en Firebase Authentication → Sign-in method.',
       'auth/invalid-email': 'El correo no es válido.',
       'auth/user-not-found': 'No existe una cuenta con ese correo.',
       'auth/wrong-password': 'Contraseña incorrecta.',
+      'auth/invalid-credential': 'Correo o contraseña incorrectos.',
       'auth/email-already-in-use': 'Ese correo ya está registrado.',
       'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
       'auth/network-request-failed': 'Sin conexión. Revisa tu internet.',
@@ -34,103 +53,149 @@ class AuthService {
     return colors[h];
   }
 
-  async _promoteAdmin(fbUser) {
-    const admin = adminByEmail(fbUser.email);
-    if (!admin) return null;
-    await this._db.set(this._db.COLLECTIONS.USERS, fbUser.uid, {
-      uid: fbUser.uid,
-      nombre: admin.name,
-      email: fbUser.email,
-      rol: 'admin',
-      activo: true,
-      verificado: true,
-      avatarColor: this._avatarColor(fbUser.uid),
-    });
-    return admin;
+  _initials(name) {
+    return initialsOf(name);
   }
 
-  async _profileFromAuth(fbUser) {
-    const admin = await this._promoteAdmin(fbUser);
-    const doc = await this._db.get(this._db.COLLECTIONS.USERS, fbUser.uid);
-    const base = {
-      id: fbUser.uid,
-      uid: fbUser.uid,
-      email: fbUser.email,
-      verified: Boolean(fbUser.emailVerified || admin),
-      googleAuth: fbUser.providerData.some(p => p.providerId === 'google.com'),
-      avatarUrl: fbUser.photoURL || doc?.foto || '',
-      displayName: fbUser.displayName,
-    };
-    if (admin) {
-      return {
-        ...base,
-        ...doc,
-        name: admin.name,
-        role: 'admin',
-        zone: doc?.zona || '',
-        initials: initialsOf(admin.name),
-        avatarColor: doc?.avatarColor || this._avatarColor(fbUser.uid),
-        needsRole: false,
-      };
-    }
-    if (!doc) return { ...base, name: fbUser.displayName || 'Usuario', role: 'cliente', needsRole: true };
+  /* ── Perfil ──────────────────────────────────────────────── */
+
+  _baseProfile(id, data = {}) {
+    const nombre = data.nombre || data.name || 'Usuario';
     return {
-      ...base,
-      ...doc,
-      name: doc.nombre || fbUser.displayName || 'Usuario',
-      role: doc.rol || 'cliente',
-      zone: doc.zona || '',
-      initials: initialsOf(doc.nombre || fbUser.displayName),
-      avatarColor: doc.avatarColor || this._avatarColor(fbUser.uid),
+      id,
+      uid: id,
+      nombre,
+      name: nombre,
+      email: data.email || '',
+      telefono: data.telefono || '',
+      whatsapp: data.whatsapp || data.telefono || '',
+      documento: data.documento || '',
+      role: data.rol || 'cliente',
+      rol: data.rol || 'cliente',
+      zone: data.zona || '',
+      zona: data.zona || '',
+      oficio: data.oficio || '',
+      avatarUrl: data.foto || data.avatarUrl || '',
+      avatarColor: data.avatarColor || this._avatarColor(id),
+      initials: this._initials(nombre),
+      verificado: Boolean(data.verificado),
+      activo: data.activo !== false,
+      sancion: data.sancion || null,
+      googleAuth: Boolean(data.googleAuth),
+      needsRole: !data.rol,
+      demo: Boolean(data.demo),
+      fechaRegistro: data.fechaRegistro || null,
     };
   }
 
-  async _ensureUserDoc(fbUser, extras = {}) {
-    const existing = await this._db.get(this._db.COLLECTIONS.USERS, fbUser.uid);
-    if (existing) return existing;
-    const role = extras.role || 'cliente';
-    const name = extras.name || fbUser.displayName || 'Usuario TuOficioCol';
-    const payload = {
-      uid: fbUser.uid,
-      nombre: name,
-      email: fbUser.email,
-      foto: fbUser.photoURL || '',
-      rol: role,
-      zona: extras.zone || '',
-      oficio: extras.trade || '',
-      verificado: fbUser.emailVerified,
-      googleAuth: fbUser.providerData.some(p => p.providerId === 'google.com'),
-      activo: extras.activo !== false,
-      avatarColor: this._avatarColor(fbUser.uid),
-      fechaRegistro: firebase.firestore.FieldValue.serverTimestamp(),
-    };
-    await this._db.set(this._db.COLLECTIONS.USERS, fbUser.uid, payload);
-    if (role === 'trabajador') await this._ensureWorkerDoc(fbUser.uid, extras);
-    return payload;
+  /* ── Modo local ──────────────────────────────────────────── */
+
+  _localSession() {
+    try {
+      return localStorage.getItem(this._sessionKey) || '';
+    } catch (e) {
+      return '';
+    }
   }
 
-  async _ensureWorkerDoc(uid, extras = {}) {
-    const existing = await this._db.get(this._db.COLLECTIONS.WORKERS, uid);
-    if (existing) return;
-    await this._db.set(this._db.COLLECTIONS.WORKERS, uid, {
-      uid,
-      oficio: extras.trade || '',
-      experiencia: extras.experience || 0,
-      descripcion: '',
-      tipoHojaVida: extras.cvType || '',
-      disponibilidad: 'Disponible',
-      tarifas: { visitaDiagnostica: 0, horaBase: 0 },
-      calificacionPromedio: 0,
-      totalResenas: 0,
-      zona: extras.zone || '',
-      zonasCobertura: extras.zone ? [extras.zone] : [],
-      portafolio: [],
-      badgeVerified: false,
-      activo: extras.activo !== false,
+  _setLocalSession(uid) {
+    try {
+      if (uid) localStorage.setItem(this._sessionKey, uid);
+      else localStorage.removeItem(this._sessionKey);
+    } catch (e) { /* ignorar */ }
+  }
+
+  _findLocalUserByEmail(email) {
+    const target = String(email || '').trim().toLowerCase();
+    return this._db.local.getAllSync(CHAMBAYA.COLLECTIONS.USERS)
+      .find(u => String(u.email || '').toLowerCase() === target) || null;
+  }
+
+  async _localProfile(id) {
+    const doc = await this._db.get(CHAMBAYA.COLLECTIONS.USERS, id);
+    if (!doc) return null;
+    const profile = this._baseProfile(id, doc);
+    profile.verified = Boolean(doc.verificado || doc.googleAuth);
+    return profile;
+  }
+
+  _assertLocalAccess(user) {
+    if (!user) throw new Error('Correo o contraseña incorrectos.');
+    if (user.activo === false) throw new Error('Tu cuenta está desactivada. Contacta al administrador.');
+    if (isUserBanned(user)) {
+      const hasta = user.sancion?.hasta ? ` hasta ${formatDate(user.sancion.hasta)}` : '';
+      throw new Error(`Tu cuenta está suspendida${hasta} por un reporte.`);
+    }
+  }
+
+  async _localLogin(email, password) {
+    const admin = adminByEmail(email);
+    if (admin) {
+      if (password !== admin.password) throw new Error('Contraseña incorrecta.');
+      let doc = this._findLocalUserByEmail(admin.email);
+      if (!doc) {
+        const id = 'admin-local';
+        await this._db.set(CHAMBAYA.COLLECTIONS.USERS, id, {
+          uid: id, nombre: admin.name, email: admin.email, rol: 'admin', activo: true,
+          verificado: true, avatarColor: this._avatarColor(id), demo: true,
+          fechaRegistro: new Date().toISOString(),
+        });
+        doc = await this._db.get(CHAMBAYA.COLLECTIONS.USERS, id);
+      }
+      this._setLocalSession(doc.id);
+      this.currentUser = await this._localProfile(doc.id);
+      this._emitLocal();
+      return this.currentUser;
+    }
+    const doc = this._findLocalUserByEmail(email);
+    this._assertLocalAccess(doc);
+    if (demoHash(password) !== doc.passHash) throw new Error('Correo o contraseña incorrectos.');
+    this._setLocalSession(doc.id);
+    this.currentUser = await this._localProfile(doc.id);
+    this._emitLocal();
+    return this.currentUser;
+  }
+
+  async _localRegister({ name, email, password, zone, trade, role }) {
+    if (this._findLocalUserByEmail(email)) throw new Error('Ese correo ya está registrado.');
+    if (String(password || '').length < 6) throw new Error('La contraseña debe tener al menos 6 caracteres.');
+    const id = `u-${Date.now().toString(36)}`;
+    await this._db.set(CHAMBAYA.COLLECTIONS.USERS, id, {
+      uid: id, nombre: name, email, telefono: '', rol: role || 'cliente', zona: zone || '',
+      oficio: trade || '', avatarColor: this._avatarColor(id), verificado: Boolean(adminByEmail(email)),
+      activo: true, passHash: demoHash(password), demo: true,
+      fechaRegistro: new Date().toISOString(),
+      preferencias: { contactoVisible: true, notificaciones: true },
     });
+    if (role === 'trabajador') await this._ensureWorkerDoc(id, { trade, zone });
+    this._setLocalSession(id);
+    this.currentUser = await this._localProfile(id);
+    this._emitLocal();
+    return this.currentUser;
   }
+
+  _ensureWorkerDocLocal(uid, extras = {}) { return this._ensureWorkerDoc(uid, extras); }
+
+  /* ── API pública ─────────────────────────────────────────── */
 
   onAuthChange(callback) {
+    if (this.mode === 'local') {
+      this._localListeners.add(callback);
+      const uid = this._localSession();
+      if (!uid) {
+        this.currentUser = null;
+        callback(null);
+      } else {
+        this._localProfile(uid).then(user => {
+          this.currentUser = user;
+          callback(user);
+        }).catch(err => {
+          console.warn(err);
+          callback(null);
+        });
+      }
+      return () => this._localListeners.delete(callback);
+    }
     return this._auth.onAuthStateChanged(async (fbUser) => {
       if (!fbUser) {
         this.currentUser = null;
@@ -148,41 +213,31 @@ class AuthService {
   }
 
   async loginWithEmail(email, password) {
+    if (this.mode === 'local') return this._localLogin(email, password);
     const admin = adminByEmail(email);
-    if (admin && password !== admin.password) {
-      throw new Error('Contraseña incorrecta.');
-    }
+    if (admin && password !== admin.password) throw new Error('Contraseña incorrecta.');
     try {
       const cred = await this._auth.signInWithEmailAndPassword(email, password);
       this.currentUser = await this._profileFromAuth(cred.user);
       return this.currentUser;
     } catch (e) {
-      const missing = ['auth/user-not-found', 'auth/invalid-credential', 'auth/invalid-login-credentials', 'auth/wrong-password'].includes(e.code);
-      if (admin && (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential' || e.code === 'auth/invalid-login-credentials')) {
-        try {
-          const cred = await this._auth.createUserWithEmailAndPassword(admin.email, admin.password);
-          await cred.user.updateProfile({ displayName: admin.name });
-          await this._ensureUserDoc(cred.user, { name: admin.name, role: 'admin', activo: true });
-          this.currentUser = await this._profileFromAuth(cred.user);
-          return this.currentUser;
-        } catch (createErr) {
-          if (createErr.code === 'auth/email-already-in-use') {
-            throw new Error('Esa cuenta admin ya existe. Revisa la contraseña.');
-          }
-          throw new Error(this._mapError(createErr));
-        }
+      const canCreateAdmin = admin && ['auth/user-not-found', 'auth/invalid-credential', 'auth/invalid-login-credentials'].includes(e.code);
+      if (canCreateAdmin) {
+        const cred = await this._auth.createUserWithEmailAndPassword(admin.email, admin.password);
+        await cred.user.updateProfile({ displayName: admin.name });
+        await this._ensureUserDoc(cred.user, { name: admin.name, role: 'admin', activo: true });
+        this.currentUser = await this._profileFromAuth(cred.user);
+        return this.currentUser;
       }
-      if (admin && missing) throw new Error(this._mapError(e));
       throw new Error(this._mapError(e));
     }
   }
 
   async register({ name, email, password, zone, trade, role }) {
+    if (this.mode === 'local') return this._localRegister({ name, email, password, zone, trade, role });
     try {
       const admin = adminByEmail(email);
-      if (admin && password !== admin.password) {
-        throw new Error('Usa la clave de administrador asignada.');
-      }
+      if (admin && password !== admin.password) throw new Error('Usa la clave de administrador asignada.');
       const finalRole = admin ? 'admin' : role;
       const cred = await this._auth.createUserWithEmailAndPassword(email, password);
       await cred.user.updateProfile({ displayName: admin ? admin.name : name });
@@ -202,32 +257,40 @@ class AuthService {
   }
 
   async loginWithGoogle(roleHint) {
+    if (this.mode === 'local') {
+      // Simula el retorno de Google con una cuenta de demostración.
+      const id = 'google-demo';
+      let doc = await this._db.get(CHAMBAYA.COLLECTIONS.USERS, id);
+      if (!doc) {
+        await this._db.set(CHAMBAYA.COLLECTIONS.USERS, id, {
+          uid: id, nombre: 'Sofía Google', email: 'sofia.google@demo.tuoficio.co',
+          rol: roleHint || 'cliente', zona: 'Chapinero', oficio: roleHint === 'trabajador' ? 'Electricidad' : '',
+          googleAuth: true, verificado: true, activo: true, demo: true, avatarColor: this._avatarColor(id),
+          fechaRegistro: new Date().toISOString(),
+        });
+        if ((roleHint || 'cliente') === 'trabajador') await this._ensureWorkerDoc(id, { trade: 'Electricidad', zone: 'Chapinero' });
+        doc = await this._db.get(CHAMBAYA.COLLECTIONS.USERS, id);
+      }
+      this._setLocalSession(doc.id);
+      this.currentUser = await this._localProfile(doc.id);
+      this._emitLocal();
+      return { isNew: true, user: this.currentUser };
+    }
     try {
       const provider = window.ChambaGoogleProvider;
       if (roleHint) sessionStorage.setItem('chambaya_role_hint', roleHint);
-
-      // En móvil el popup suele estar bloqueado → mejor redirect directo.
       const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '') ||
         (window.matchMedia && window.matchMedia('(max-width: 700px)').matches);
-
       let result = null;
       try {
         if (isMobile) throw new Error('__mobile_redirect__');
         result = await this._auth.signInWithPopup(provider);
       } catch (popErr) {
-        const code = popErr && popErr.code;
         const forcedRedirect = popErr && popErr.message === '__mobile_redirect__';
-        // Redirect solo cuando el navegador bloquea el popup (o en móvil).
-        // Si el usuario cancela/cierra el popup a propósito, se muestra el error normal.
-        if (!forcedRedirect && code !== 'auth/popup-blocked') {
-          throw popErr;
-        }
-        // Navega a Google en la misma pestaña; al volver, el arranque
-        // procesa el resultado con handleRedirectResult().
+        if (!forcedRedirect && popErr.code !== 'auth/popup-blocked') throw popErr;
         await this._auth.signInWithRedirect(provider);
         return { isNew: false, user: this.currentUser, redirected: true };
       }
-
       const isNew = result.additionalUserInfo?.isNewUser;
       const existing = await this._db.get(this._db.COLLECTIONS.USERS, result.user.uid);
       const admin = adminByEmail(result.user.email);
@@ -241,31 +304,38 @@ class AuthService {
     }
   }
 
-  // Procesa el regreso de signInWithRedirect (suele llamarse al arrancar la app).
   async handleRedirectResult() {
-    if (!this._auth.getRedirectResult) return null;
+    if (this.mode === 'local' || !this._auth.getRedirectResult) return null;
     let result;
     try {
       result = await this._auth.getRedirectResult();
     } catch (e) {
-      console.warn('TuOficioCol: no hubo resultado de redirect Google.', e.message);
+      console.warn('TuOficio: no hubo resultado de redirect Google.', e.message);
       return null;
     }
     if (!result || !result.user) return null;
-
     const isNew = Boolean(result.additionalUserInfo?.isNewUser);
     const hint = sessionStorage.getItem('chambaya_role_hint') || '';
     sessionStorage.removeItem('chambaya_role_hint');
     const existing = await this._db.get(this._db.COLLECTIONS.USERS, result.user.uid);
     const admin = adminByEmail(result.user.email);
-    if (!existing && hint && !admin) {
-      await this._ensureUserDoc(result.user, { role: hint });
-    }
+    if (!existing && hint && !admin) await this._ensureUserDoc(result.user, { role: hint });
     this.currentUser = await this._profileFromAuth(result.user);
     return { isNew: Boolean(isNew || !existing), user: this.currentUser };
   }
 
   async completeRole(role, extras = {}) {
+    if (this.mode === 'local') {
+      const uid = this._localSession();
+      if (!uid) throw new Error('No hay sesión.');
+      await this._db.update(CHAMBAYA.COLLECTIONS.USERS, uid, {
+        rol: role, zona: extras.zone || '', oficio: extras.trade || '',
+      });
+      if (role === 'trabajador') await this._ensureWorkerDoc(uid, extras);
+      this.currentUser = await this._localProfile(uid);
+      this._emitLocal();
+      return this.currentUser;
+    }
     const user = this._auth.currentUser;
     if (!user) throw new Error('No hay sesión.');
     const existing = await this._db.get(this._db.COLLECTIONS.USERS, user.uid);
@@ -273,9 +343,7 @@ class AuthService {
       await this._ensureUserDoc(user, { role, zone: extras.zone, trade: extras.trade });
     } else {
       await this._db.update(this._db.COLLECTIONS.USERS, user.uid, {
-        rol: role,
-        zona: extras.zone || '',
-        oficio: extras.trade || '',
+        rol: role, zona: extras.zone || '', oficio: extras.trade || '',
       });
       if (role === 'trabajador') await this._ensureWorkerDoc(user.uid, extras);
     }
@@ -284,25 +352,127 @@ class AuthService {
   }
 
   async sendPasswordReset(email) {
+    if (this.mode === 'local') {
+      const user = this._findLocalUserByEmail(email);
+      if (!user) throw new Error('No existe una cuenta con ese correo.');
+      return true;
+    }
     try {
       await this._auth.sendPasswordResetEmail(email);
+      return true;
     } catch (e) {
       throw new Error(this._mapError(e));
     }
   }
 
   async resendVerificationEmail() {
+    if (this.mode === 'local') return true;
     if (this._auth.currentUser) await this._auth.currentUser.sendEmailVerification();
+    return true;
   }
 
   async checkEmailVerified() {
+    if (this.mode === 'local') return true;
     if (!this._auth.currentUser) return false;
     await this._auth.currentUser.reload();
     return this._auth.currentUser.emailVerified;
   }
 
   async logout() {
+    if (this.mode === 'local') {
+      this._setLocalSession('');
+      this.currentUser = null;
+      this._emitLocal();
+      return;
+    }
     await this._auth.signOut();
     this.currentUser = null;
+  }
+
+  /* ── Documentos de perfil (modo Firebase) ────────────────── */
+
+  async _promoteAdmin(fbUser) {
+    const admin = adminByEmail(fbUser.email);
+    if (!admin) return null;
+    await this._db.set(this._db.COLLECTIONS.USERS, fbUser.uid, {
+      uid: fbUser.uid, nombre: admin.name, email: fbUser.email, rol: 'admin',
+      activo: true, verificado: true, avatarColor: this._avatarColor(fbUser.uid),
+    });
+    return admin;
+  }
+
+  async _profileFromAuth(fbUser) {
+    const admin = await this._promoteAdmin(fbUser);
+    const doc = await this._db.get(this._db.COLLECTIONS.USERS, fbUser.uid);
+    const merged = {
+      ...(doc || {}),
+      nombre: admin ? admin.name : (doc?.nombre || fbUser.displayName || 'Usuario'),
+      rol: admin ? 'admin' : (doc?.rol || 'cliente'),
+      email: fbUser.email,
+      foto: doc?.foto || fbUser.photoURL || '',
+      googleAuth: fbUser.providerData.some(p => p.providerId === 'google.com'),
+    };
+    const profile = this._baseProfile(fbUser.uid, merged);
+    profile.needsRole = !admin && !doc;
+    profile.verified = Boolean(fbUser.emailVerified || admin || doc?.verificado);
+    return profile;
+  }
+
+  async _ensureUserDoc(fbUser, extras = {}) {
+    const existing = await this._db.get(this._db.COLLECTIONS.USERS, fbUser.uid);
+    if (existing) return existing;
+    const role = extras.role || 'cliente';
+    const name = extras.name || fbUser.displayName || 'Usuario TuOficioCol';
+    const payload = {
+      uid: fbUser.uid,
+      nombre: name,
+      email: fbUser.email,
+      foto: fbUser.photoURL || '',
+      rol: role,
+      zona: extras.zone || '',
+      oficio: extras.trade || '',
+      telefono: '',
+      verificado: Boolean(fbUser.emailVerified),
+      googleAuth: fbUser.providerData.some(p => p.providerId === 'google.com'),
+      activo: extras.activo !== false,
+      avatarColor: this._avatarColor(fbUser.uid),
+      preferencias: { contactoVisible: true, notificaciones: true },
+      fechaRegistro: firebase.firestore.FieldValue.serverTimestamp(),
+    };
+    await this._db.set(this._db.COLLECTIONS.USERS, fbUser.uid, payload);
+    if (role === 'trabajador') await this._ensureWorkerDoc(fbUser.uid, extras);
+    return payload;
+  }
+
+  async _ensureWorkerDoc(uid, extras = {}) {
+    const existing = await this._db.get(this._db.COLLECTIONS.WORKERS, uid);
+    if (existing) return existing;
+    const zone = extras.zone || '';
+    const z = zoneByName(zone);
+    await this._db.set(this._db.COLLECTIONS.WORKERS, uid, {
+      uid,
+      nombre: extras.name || '',
+      oficio: extras.trade || '',
+      experiencia: Number(extras.experience) || 0,
+      descripcion: '',
+      tipoHojaVida: extras.cvType || '',
+      disponibilidad: 'Disponible',
+      horario: { dias: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], inicio: '08:00', fin: '18:00' },
+      tarifas: { visitaDiagnostica: 0, horaBase: 0, nota: '' },
+      calificacionPromedio: 0,
+      totalResenas: 0,
+      zona: zone,
+      zonasCobertura: zone ? [zone] : [],
+      ubicacion: z ? { lat: z.lat, lng: z.lng } : null,
+      telefono: '',
+      whatsapp: '',
+      contactoVisible: true,
+      portafolio: [],
+      habilidades: [],
+      badgeVerified: false,
+      verificacionEstado: CHAMBAYA.VERIFICATION_STATUS.NONE,
+      vistas: 0,
+      activo: extras.activo !== false,
+    });
   }
 }

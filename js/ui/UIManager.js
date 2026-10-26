@@ -1,3 +1,7 @@
+/**
+ * Gestor de interfaz: cabecera, menú lateral, notificaciones, modales y
+ * navegación entre las vistas de la aplicación.
+ */
 class UIManager {
   constructor(appInstance) {
     this._app = appInstance;
@@ -7,6 +11,7 @@ class UIManager {
     this._chatbot = null;
     this._notifOpen = false;
     this._dropdownOpen = false;
+    this._confirmResolve = null;
     window.ui = this;
   }
 
@@ -14,17 +19,40 @@ class UIManager {
     this._renderHeader();
     this._renderChatbot();
     this._bindGlobalEvents();
+    this._bindDemoPanel();
   }
 
+  /* ── Pantallas ───────────────────────────────────────────── */
+
   showSetupBanner() {
-    const el = document.getElementById('setupBanner');
-    if (el) el.classList.remove('hidden');
+    document.getElementById('setupBanner')?.classList.remove('hidden');
+  }
+
+  showLocalBanner() {
+    document.getElementById('localBanner')?.classList.remove('hidden');
   }
 
   showAuth() {
     document.getElementById('authScreen')?.classList.remove('hidden');
     document.getElementById('appScreen')?.classList.add('hidden');
     document.getElementById('chatbotFab')?.classList.add('hidden');
+    document.querySelector('.chatbot-window')?.classList.remove('open');
+  }
+
+  /** Limpia el estado de la sesión anterior (páginas, modales, chat). */
+  resetSession() {
+    try { this._pages[this._currentPage]?.destroy?.(); } catch (e) { /* ignorar */ }
+    this._pages = {};
+    this._currentPage = null;
+    this._notifs = [];
+    this._notifOpen = false;
+    this.closeModal();
+    document.getElementById('notifPanel')?.classList.remove('open');
+    document.getElementById('chatbotWindow')?.classList.remove('open');
+    const badge = document.getElementById('notifBadge');
+    if (badge) badge.classList.add('hidden');
+    const icon = document.getElementById('chatbotIcon');
+    if (icon) icon.className = 'fas fa-robot';
   }
 
   showApp(user) {
@@ -36,6 +64,8 @@ class UIManager {
     this._chatbot?.init(user);
     this.navigateTo('dashboard');
   }
+
+  /* ── Autenticación ───────────────────────────────────────── */
 
   switchTab(tab) {
     document.querySelectorAll('.auth-tab').forEach(t =>
@@ -60,9 +90,11 @@ class UIManager {
   selectRole(role, el) {
     this._selectedRole = role;
     document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
-    el.classList.add('active');
+    el?.classList.add('active');
     const trade = document.getElementById('tradeField');
-    if (trade) trade.style.display = role === 'trabajador' || role === 'worker' ? 'block' : 'none';
+    if (trade) trade.style.display = role === 'trabajador' ? 'block' : 'none';
+    const experience = document.getElementById('regExperienceGroup');
+    if (experience) experience.style.display = role === 'trabajador' ? 'block' : 'none';
   }
 
   async doLogin() {
@@ -79,17 +111,18 @@ class UIManager {
     } catch (err) {
       this._showAuthError('loginError', err.message);
     } finally {
-      this._setLoading('loginBtn', false, '<i class="fas fa-sign-in-alt"></i> Iniciar Sesión');
+      this._setLoading('loginBtn', false, '<i class="fas fa-sign-in-alt"></i> Iniciar sesión');
     }
   }
 
   async doRegister() {
-    const name = document.getElementById('regName').value.trim();
-    const last = document.getElementById('regLast').value.trim();
-    const email = document.getElementById('regEmail').value.trim();
-    const pass = document.getElementById('regPass').value;
-    const zone = document.getElementById('regZone').value.trim();
+    const name = document.getElementById('regName')?.value.trim();
+    const last = document.getElementById('regLast')?.value.trim();
+    const email = document.getElementById('regEmail')?.value.trim();
+    const pass = document.getElementById('regPass')?.value;
+    const zone = document.getElementById('regZone')?.value.trim();
     const trade = document.getElementById('regTrade')?.value || null;
+    const experience = document.getElementById('regExperience')?.value || 0;
     const admin = adminByEmail(email);
     const role = admin ? 'admin' : (this._selectedRole === 'worker' ? 'trabajador' : this._selectedRole);
     if (admin) {
@@ -110,27 +143,29 @@ class UIManager {
     try {
       await this._app.register({
         name: admin ? admin.name : `${name} ${last}`,
-        email, password: pass, zone: admin ? '' : zone, trade: admin ? '' : trade, role,
+        email, password: pass,
+        zone: admin ? '' : zone,
+        trade: admin ? '' : trade,
+        experience: admin ? 0 : Number(experience) || 0,
+        role,
       });
       this.showToast(admin
         ? 'Administrador listo. Entraste al panel de gestión.'
-        : 'Cuenta creada. Revisa tu correo para verificarla.', 'success', 5000);
+        : 'Cuenta creada. Completa tu perfil para aparecer en las búsquedas.', 'success', 5000);
     } catch (err) {
       this._showAuthError('registerError', err.message);
     } finally {
-      this._setLoading('registerBtn', false, '<i class="fas fa-user-plus"></i> Crear Cuenta Gratis');
+      this._setLoading('registerBtn', false, '<i class="fas fa-user-plus"></i> Crear cuenta gratis');
     }
   }
 
   async doGoogleLogin() {
     this._clearAuthErrors();
     const registerVisible = document.getElementById('registerForm')?.style.display !== 'none';
-    const roleHint = registerVisible
-      ? (this._selectedRole === 'worker' ? 'trabajador' : this._selectedRole)
-      : null;
+    const roleHint = registerVisible ? this._selectedRole : null;
     try {
       const result = await this._app.loginWithGoogle(roleHint);
-      if (result && result.redirected) return; // navegando a Google en la misma pestaña
+      if (result && result.redirected) return;
       this.showToast(result.isNew ? 'Cuenta creada con Google.' : '¡Hola de nuevo!', 'success');
     } catch (err) {
       this._showAuthError('loginError', err.message);
@@ -138,16 +173,43 @@ class UIManager {
     }
   }
 
+  async demoLogin(role) {
+    if (this._app.mode !== 'local') {
+      this.showToast('El acceso rápido solo está disponible en modo demostración.', 'error');
+      return;
+    }
+    const creds = {
+      cliente: ['ana@demo.tuoficio.co', 'demo1234'],
+      trabajador: ['carlos@demo.tuoficio.co', 'demo1234'],
+      admin: ['admin1@chambaya.com', 'AdminChamba1!'],
+    }[role];
+    if (!creds) return;
+    try {
+      await this._app.loginWithEmail(creds[0], creds[1]);
+      this.showToast(`Sesión de demostración: ${role}`, 'success');
+    } catch (e) {
+      this.showToast(e.message, 'error');
+    }
+  }
+
+  _bindDemoPanel() {
+    const panel = document.getElementById('demoPanel');
+    if (!panel) return;
+    panel.classList.toggle('hidden', this._app.mode !== 'local');
+  }
+
   askRole(user) {
     this.openModal(`
       <div class="modal-header">
         <div class="modal-title">¿Cómo vas a usar TuOficioCol?</div>
       </div>
-      <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Hola ${escapeHtml(user.name || '')}. Elige un rol para guardar tu perfil en Firestore.</p>
-      <div class="form-group"><label>Zona</label>
+      <p style="font-size:13px;color:var(--text3);margin-bottom:16px">
+        Hola ${escapeHtml(user.name || '')}. Elige un rol y tu zona para personalizar la experiencia.
+      </p>
+      <div class="form-group"><label>Zona / localidad</label>
         <select class="form-input" id="roleZone">${CHAMBAYA.ZONES.map(z => `<option>${z.name}</option>`).join('')}</select>
       </div>
-      <div class="form-group"><label>Si eres trabajador, oficio</label>
+      <div class="form-group"><label>Si eres trabajador, ¿cuál es tu oficio?</label>
         <select class="form-input" id="roleTrade">${CHAMBAYA.TRADES.map(t => `<option>${t}</option>`).join('')}</select>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -163,7 +225,7 @@ class UIManager {
       const user = await this._app.completeRole(role, { zone, trade });
       this.closeModal();
       this.showApp(user);
-      this.showToast('Perfil guardado', 'success');
+      this.showToast('Perfil configurado', 'success');
     } catch (e) {
       this.showToast(e.message, 'error');
     }
@@ -176,62 +238,77 @@ class UIManager {
       await this._app.sendPasswordReset(email);
       const msg = document.getElementById('forgotMsg');
       msg.style.display = 'block';
-      msg.textContent = `Enviamos el enlace a ${email}.`;
+      msg.textContent = `Enviamos el enlace de recuperación a ${email}.`;
     } catch (err) {
-      this.showToast(err.message, 'error');
+      const msg = document.getElementById('forgotMsg');
+      msg.style.display = 'block';
+      msg.style.color = '#A85B46';
+      msg.textContent = err.message;
     }
   }
 
   async doLogout() {
-    await this._app.logout();
+    const ok = await this.confirm({
+      title: 'Cerrar sesión',
+      message: '¿Quieres salir de TuOficioCol?',
+      confirmText: 'Cerrar sesión',
+    });
+    if (ok) await this._app.logout();
   }
+
+  /* ── Cabecera ────────────────────────────────────────────── */
 
   _renderHeader() {
     const header = document.getElementById('appHeader');
     if (!header) return;
     header.innerHTML = `
-      <button id="menuToggle" class="menu-toggle" onclick="ui.toggleSidebar()"><i class="fas fa-bars"></i></button>
+      <button id="menuToggle" class="menu-toggle" onclick="ui.toggleSidebar()" aria-label="Abrir menú">
+        <i class="fas fa-bars"></i>
+      </button>
       <a class="header-logo" href="index.html">
         <div class="header-logo-icon"><i class="fas fa-bolt"></i></div>
-        <span>TuOficioCol</span>
+        <span>TuOficio<b>Col</b></span>
       </a>
       <div class="header-search-wrapper">
         <i class="fas fa-search search-icon"></i>
         <input type="text" class="header-search" id="globalSearch"
-          placeholder="Buscar técnicos, oficios, barrios..."
-          oninput="ui.handleSearch(this.value)"/>
+          placeholder="Buscar técnicos, oficios o barrios..."
+          onkeydown="if(event.key==='Enter') ui.handleSearch(this.value)"
+          aria-label="Buscar"/>
       </div>
       <div class="header-actions">
         <span class="role-badge" id="headerRoleBadge"></span>
-        <button class="notif-btn" onclick="ui.toggleNotifPanel()" title="Notificaciones">
+        <button class="notif-btn" onclick="ui.toggleNotifPanel()" title="Notificaciones" aria-label="Notificaciones">
           <i class="fas fa-bell"></i>
           <span class="notif-badge hidden" id="notifBadge">0</span>
         </button>
         <div class="dropdown" id="userDropdown">
           <div class="user-avatar" id="headerAvatar" onclick="ui.toggleDropdown()"></div>
           <div class="dropdown-menu" id="userMenu">
-            <div class="dropdown-item" onclick="ui.navigateTo('profile')"><i class="fas fa-user"></i> Mi Perfil</div>
+            <div class="dropdown-item" onclick="ui.navigateTo('profile')"><i class="fas fa-user"></i> Mi perfil</div>
             <div class="dropdown-item" onclick="ui.navigateTo('settings')"><i class="fas fa-cog"></i> Configuración</div>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-item danger" onclick="ui.doLogout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</div>
+            <div class="dropdown-item danger" onclick="ui.doLogout()"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</div>
           </div>
         </div>
       </div>`;
   }
 
   _updateHeaderUser(user) {
+    if (!user) return;
     const avatar = document.getElementById('headerAvatar');
-    if (!avatar) return;
-    if (user.avatarUrl) {
-      avatar.innerHTML = `<img src="${escapeHtml(user.avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:inherit;object-fit:cover"/>`;
-    } else {
-      avatar.textContent = user.initials || initialsOf(user.name);
-      avatar.style.background = user.avatarColor || '#3A3A38';
+    if (avatar) {
+      if (user.avatarUrl) {
+        avatar.innerHTML = `<img src="${escapeHtml(user.avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:inherit;object-fit:cover"/>`;
+      } else {
+        avatar.textContent = user.initials || initialsOf(user.name);
+        avatar.style.background = user.avatarColor || '#3A3A38';
+      }
     }
     const roleBadge = document.getElementById('headerRoleBadge');
-    const roleLabel = { admin: 'Administrador', trabajador: 'Trabajador', worker: 'Trabajador', cliente: 'Empleador', client: 'Empleador' }[user.role] || user.role;
+    const roleLabel = { admin: 'Administrador', trabajador: 'Trabajador', cliente: 'Empleador' }[user.role] || user.role;
     if (roleBadge) {
-      const cls = user.role === 'trabajador' || user.role === 'worker' ? 'worker' : user.role === 'admin' ? 'admin' : 'client';
+      const cls = user.role === 'trabajador' ? 'worker' : user.role === 'admin' ? 'admin' : 'client';
       roleBadge.textContent = roleLabel;
       roleBadge.className = `role-badge ${cls}`;
     }
@@ -251,19 +328,17 @@ class UIManager {
   }
 
   _renderSidebar(role) {
-    const r = role === 'worker' ? 'trabajador' : role === 'client' ? 'cliente' : role;
     const NAV = {
       admin: {
         main: [
-          { id: 'dashboard', icon: 'fa-th-large', label: 'Panel Principal' },
-          { id: 'admin-users', icon: 'fa-clipboard-list', label: 'Registros' },
-          { id: 'admin-active', icon: 'fa-user-check', label: 'Usuarios activos' },
-          { id: 'admin-inactive', icon: 'fa-user-slash', label: 'Usuarios inactivos' },
+          { id: 'dashboard', icon: 'fa-th-large', label: 'Panel principal' },
+          { id: 'admin-users', icon: 'fa-clipboard-list', label: 'Usuarios' },
           { id: 'admin-verify', icon: 'fa-shield-alt', label: 'Verificaciones' },
           { id: 'admin-reports', icon: 'fa-flag', label: 'Reportes' },
+          { id: 'admin-jobs', icon: 'fa-briefcase', label: 'Trabajos' },
         ],
         mgmt: [
-          { id: 'workers', icon: 'fa-hard-hat', label: 'Trabajadores' },
+          { id: 'workers', icon: 'fa-hard-hat', label: 'Directorio' },
           { id: 'map', icon: 'fa-map-marked-alt', label: 'Zonas' },
           { id: 'messages', icon: 'fa-comment', label: 'Mensajes' },
           { id: 'settings', icon: 'fa-cog', label: 'Configuración' },
@@ -271,11 +346,12 @@ class UIManager {
       },
       trabajador: {
         main: [
-          { id: 'dashboard', icon: 'fa-th-large', label: 'Mi Panel' },
-          { id: 'profile', icon: 'fa-user', label: 'Mi Perfil / HV' },
+          { id: 'dashboard', icon: 'fa-th-large', label: 'Mi panel' },
+          { id: 'profile', icon: 'fa-user', label: 'Mi perfil / HV' },
           { id: 'portfolio', icon: 'fa-images', label: 'Portafolio' },
           { id: 'availability', icon: 'fa-clock', label: 'Disponibilidad' },
           { id: 'quotes', icon: 'fa-briefcase', label: 'Ofertas cercanas' },
+          { id: 'jobs', icon: 'fa-clipboard-check', label: 'Mis trabajos' },
           { id: 'messages', icon: 'fa-comment', label: 'Mensajes' },
         ],
         mgmt: [
@@ -289,16 +365,17 @@ class UIManager {
           { id: 'workers', icon: 'fa-users', label: 'Directorio' },
           { id: 'map', icon: 'fa-map-marked-alt', label: 'Mapa' },
           { id: 'quotes', icon: 'fa-file-alt', label: 'Mis solicitudes' },
+          { id: 'jobs', icon: 'fa-clipboard-check', label: 'Mis trabajos' },
           { id: 'favorites', icon: 'fa-heart', label: 'Favoritos' },
           { id: 'messages', icon: 'fa-comment', label: 'Mensajes' },
         ],
         mgmt: [
-          { id: 'profile', icon: 'fa-user', label: 'Mi Perfil' },
+          { id: 'profile', icon: 'fa-user', label: 'Mi perfil' },
           { id: 'settings', icon: 'fa-cog', label: 'Configuración' },
         ],
       },
     };
-    const def = NAV[r] || NAV.cliente;
+    const def = NAV[role] || NAV.cliente;
     document.getElementById('sidebar').innerHTML = `
       <div class="sidebar-section">
         <div class="sidebar-label">Principal</div>
@@ -326,24 +403,34 @@ class UIManager {
     </div>`;
   }
 
-  navigateTo(pageId) {
-    this._pages[this._currentPage]?.destroy?.();
-    delete this._pages[this._currentPage];
+  /* ── Navegación ──────────────────────────────────────────── */
+
+  navigateTo(pageId, params = {}) {
+    if (this._currentPage) this._pages[this._currentPage]?.destroy?.();
     this._currentPage = pageId;
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById(`nav-${pageId}`)?.classList.add('active');
     const main = document.getElementById('mainContent');
-    main.innerHTML = '';
+    if (!main) return;
+    main.innerHTML = '<div class="page-loading"><span class="spinner"></span></div>';
     const page = this._getPage(pageId);
-    if (page) page.render(main);
-    else main.innerHTML = `<div class="empty-state"><i class="fas fa-tools"></i><h3>Página en construcción</h3></div>`;
+    if (!page) {
+      main.innerHTML = `<div class="empty-state"><i class="fas fa-tools"></i><h3>Página no disponible</h3></div>`;
+      return;
+    }
+    page._alive = true;
+    Promise.resolve(page.render(main, params)).catch(err => {
+      console.error(err);
+      main.innerHTML = `<div class="empty-state"><i class="fas fa-triangle-exclamation"></i>
+        <h3>No se pudo cargar la sección</h3><p>${escapeHtml(err.message || '')}</p></div>`;
+    });
     if (window.innerWidth < 900) document.getElementById('sidebar')?.classList.remove('open');
     document.getElementById('notifPanel')?.classList.remove('open');
     this._notifOpen = false;
   }
 
   _getPage(pageId) {
-    if (!this._pages[pageId]) {
+    if (!this._pages[pageId] || this._pages[pageId] === true) {
       const map = {
         dashboard: DashboardPage,
         workers: WorkersPage,
@@ -352,6 +439,7 @@ class UIManager {
         portfolio: PortfolioPage,
         availability: AvailabilityPage,
         quotes: QuotesPage,
+        jobs: JobsPage,
         favorites: FavoritesPage,
         map: MapPage,
         'admin-users': AdminUsersPage,
@@ -359,6 +447,7 @@ class UIManager {
         'admin-inactive': AdminUsersPage,
         'admin-verify': AdminVerifyPage,
         'admin-reports': AdminReportsPage,
+        'admin-jobs': AdminJobsPage,
         settings: SettingsPage,
       };
       const Cls = map[pageId];
@@ -368,8 +457,11 @@ class UIManager {
     return this._pages[pageId];
   }
 
+  /* ── Notificaciones ──────────────────────────────────────── */
+
   updateNotifications(notifs) {
-    const unread = notifs.filter(n => !n.read && !n.leida).length;
+    this._notifs = notifs;
+    const unread = notifs.filter(n => !n.read).length;
     const badge = document.getElementById('notifBadge');
     if (badge) {
       badge.textContent = unread;
@@ -380,21 +472,28 @@ class UIManager {
     panel.innerHTML = `
       <div class="notif-panel-header">
         <div style="font-size:15px;font-weight:700">Notificaciones</div>
-        <button onclick="ui.markAllNotifRead()" style="font-size:12px;color:var(--primary);background:none;border:none;cursor:pointer;font-weight:600">Marcar todas leídas</button>
+        <button onclick="ui.markAllNotifRead()" class="link-btn">Marcar todas leídas</button>
       </div>
       ${notifs.length ? notifs.map(n => `
-        <div class="notif-item ${n.read || n.leida ? '' : 'unread'}" onclick="ui.markNotifRead('${n.id}')">
+        <div class="notif-item ${n.read ? '' : 'unread'}" onclick="ui.openNotification('${n.id}','${escapeHtml(n.link || '')}')">
           <div class="notif-icon-wrap" style="background:${n.bg || 'var(--bg)'}">
             <i class="fas ${n.icon || 'fa-bell'}" style="color:${n.color || 'var(--primary)'}"></i>
           </div>
-          <div style="flex:1">
+          <div style="flex:1;min-width:0">
             <div class="notif-title">${escapeHtml(n.title)}</div>
             <div class="notif-desc">${escapeHtml(n.desc)}</div>
+            <div class="notif-time">${timeAgo(n.createdAt)}</div>
           </div>
-        </div>`).join('') : `<div class="empty-state" style="padding:32px"><i class="fas fa-bell-slash"></i><h3>Sin notificaciones</h3></div>`}`;
+        </div>`).join('') : '<div class="empty-state" style="padding:32px"><i class="fas fa-bell-slash"></i><h3>Sin notificaciones</h3></div>'}`;
+  }
+
+  async openNotification(id, link) {
+    try { await this._app.notif.markRead(id); } catch (e) { /* ignorar */ }
+    if (link) this.navigateTo(link);
   }
 
   async markNotifRead(id) { await this._app.notif.markRead(id); }
+
   async markAllNotifRead() {
     const user = this._app.auth.currentUser;
     if (user) await this._app.notif.markAllRead(user.uid);
@@ -402,42 +501,88 @@ class UIManager {
 
   toggleNotifPanel() {
     this._notifOpen = !this._notifOpen;
-    document.getElementById('notifPanel').classList.toggle('open', this._notifOpen);
+    document.getElementById('notifPanel')?.classList.toggle('open', this._notifOpen);
   }
 
+  /* ── Chatbot ─────────────────────────────────────────────── */
+
   _renderChatbot() {
+    const host = document.getElementById('chatbotWindow');
+    if (!host) return;
     this._chatbot = new Chatbot(this._app, this);
-    document.getElementById('chatbotWindow').innerHTML = this._chatbot.template();
+    host.innerHTML = this._chatbot.template();
   }
 
   toggleChatbot() {
     const win = document.getElementById('chatbotWindow');
     const icon = document.getElementById('chatbotIcon');
+    if (!win) return;
     const open = win.classList.toggle('open');
     if (icon) icon.className = open ? 'fas fa-times' : 'fas fa-robot';
     if (open) this._chatbot?.focus();
   }
 
-  openModal(html) {
+  /* ── Modales y avisos ────────────────────────────────────── */
+
+  openModal(html, { wide = false, closeOnBackdrop = true } = {}) {
     this.closeModal();
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay open';
     overlay.id = 'activeModal';
-    overlay.innerHTML = `<div class="modal">${html}</div>`;
-    overlay.addEventListener('click', e => { if (e.target === overlay) this.closeModal(); });
+    overlay.innerHTML = `<div class="modal ${wide ? 'modal-lg' : ''}">${html}</div>`;
+    if (closeOnBackdrop) overlay.addEventListener('click', e => { if (e.target === overlay) this.closeModal(); });
     document.getElementById('modalContainer').appendChild(overlay);
+    return overlay;
   }
 
   closeModal() {
+    const pending = this._confirmResolve;
+    this._confirmResolve = null;
     document.getElementById('activeModal')?.remove();
+    if (pending) pending(false);
+  }
+
+  /** Diálogo de confirmación basado en promesa. */
+  confirm({ title = 'Confirmar', message = '', confirmText = 'Aceptar', cancelText = 'Cancelar', danger = false } = {}) {
+    return new Promise(resolve => {
+      this.openModal(`
+        <div class="modal-header">
+          <div class="modal-title">${escapeHtml(title)}</div>
+          <button class="modal-close" onclick="ui.resolveConfirm(false)"><i class="fas fa-times"></i></button>
+        </div>
+        <p style="font-size:14px;color:var(--text2);line-height:1.6">${escapeHtml(message)}</p>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="ui.resolveConfirm(false)">${escapeHtml(cancelText)}</button>
+          <button class="btn ${danger ? 'btn-danger' : 'btn-primary'}" onclick="ui.resolveConfirm(true)">${escapeHtml(confirmText)}</button>
+        </div>`);
+      this._confirmResolve = resolve;
+    });
+  }
+
+  resolveConfirm(value) {
+    const resolve = this._confirmResolve;
+    this._confirmResolve = null;
+    this.closeModal();
+    if (resolve) resolve(value);
+  }
+
+  openImage(src, title = '') {
+    this.openModal(`
+      <div class="modal-header">
+        <div class="modal-title">${escapeHtml(title || 'Vista previa')}</div>
+        <button class="modal-close" onclick="ui.closeModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <img src="${src}" alt="${escapeHtml(title)}" class="modal-image"/>`, { wide: true });
   }
 
   showToast(msg, type = 'info', duration = 3500) {
     const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle' };
+    const host = document.getElementById('toastContainer');
+    if (!host) return;
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    toast.innerHTML = `<i class="fas ${icons[type]}"></i><span>${escapeHtml(msg)}</span>`;
-    document.getElementById('toastContainer').appendChild(toast);
+    toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${escapeHtml(msg)}</span>`;
+    host.appendChild(toast);
     setTimeout(() => {
       toast.style.opacity = '0';
       toast.style.transform = 'translateX(120%)';
@@ -445,14 +590,60 @@ class UIManager {
     }, duration);
   }
 
+  /* ── Utilidades ──────────────────────────────────────────── */
+
   handleSearch(val) {
-    if (this._currentPage === 'workers') this._pages.workers?.search(val);
+    const q = String(val || '').trim();
+    if (!q) return;
+    if (this._currentPage !== 'workers') {
+      this.navigateTo('workers', { query: q });
+    } else {
+      this._pages.workers?.search(q);
+    }
   }
 
-  toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+  /** Abre el perfil de un técnico desde cualquier sección. */
+  viewWorker(workerId) {
+    if (!workerId) return;
+    if (this._currentPage !== 'workers') {
+      this.navigateTo('workers', { openWorkerId: workerId });
+    } else {
+      this._pages.workers?.openProfile(workerId);
+    }
+  }
+
+  copyText(text) {
+    const value = String(text || '');
+    if (!value) return;
+    const done = () => this.showToast('Enlace copiado al portapapeles.', 'success');
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(value).then(done).catch(() => this._fallbackCopy(value, done));
+    } else {
+      this._fallbackCopy(value, done);
+    }
+  }
+
+  _fallbackCopy(value, done) {
+    try {
+      const area = document.createElement('textarea');
+      area.value = value;
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand('copy');
+      area.remove();
+      done();
+    } catch (e) {
+      this.showToast('No se pudo copiar. Selecciona el enlace manualmente.', 'error');
+    }
+  }
+
+  toggleSidebar() { document.getElementById('sidebar')?.classList.toggle('open'); }
+
   toggleDropdown() {
     this._dropdownOpen = !this._dropdownOpen;
-    document.getElementById('userDropdown').classList.toggle('open', this._dropdownOpen);
+    document.getElementById('userDropdown')?.classList.toggle('open', this._dropdownOpen);
   }
 
   _showAuthError(elId, msg) {
@@ -483,6 +674,12 @@ class UIManager {
       if (!e.target.closest('#notifPanel') && !e.target.closest('.notif-btn')) {
         document.getElementById('notifPanel')?.classList.remove('open');
         this._notifOpen = false;
+      }
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        if (document.getElementById('activeModal')) this.closeModal();
+        else if (document.getElementById('notifPanel')?.classList.contains('open')) this.toggleNotifPanel();
       }
     });
   }
