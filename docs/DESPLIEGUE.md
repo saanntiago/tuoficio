@@ -4,7 +4,7 @@
 
 El proyecto está actualizado en el repositorio y se ejecuta localmente. **No se verificó una URL pública** porque en el entorno de trabajo no hay Firebase CLI, sesión de Firebase ni acceso a la configuración de Pages del repositorio.
 
-No afirmes que la app está publicada hasta comprobar la URL en un navegador.
+Comprobación del 25 de octubre de 2026: `https://saanntiago.github.io/tuoficio/` devolvió **404 (Site not found)**, es decir, GitHub Pages aún no está habilitado o el repositorio no permite Pages. No afirmes que la app está publicada hasta comprobar la URL en un navegador.
 
 ## Opción A: GitHub Pages
 
