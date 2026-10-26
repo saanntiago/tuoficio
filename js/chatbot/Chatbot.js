@@ -5,6 +5,7 @@ class Chatbot {
     this._history = [];
     this._user = null;
     this._cv = null;
+    this._quote = null;
 
     this._vocab = {
       buscar: 1, trabajador: 2, tecnico: 3, necesito: 4, quiero: 5, plomero: 6, plomeria: 7,
@@ -72,6 +73,7 @@ class Chatbot {
     this._user = user;
     this._history = [];
     this._cv = null;
+    this._quote = null;
     const name = (user.name || 'amig@').split(' ')[0];
     const role = user.role === 'trabajador' || user.role === 'worker' ? 'trabajador'
       : user.role === 'admin' ? 'admin' : 'cliente';
@@ -187,15 +189,17 @@ class Chatbot {
     const raw = text.trim();
     const low = raw.toLowerCase();
     if (!this._cv) {
-      const profesional = /profesional|formal|titulo|certificado/.test(low);
       const informal = /informal|oficio|empiric|sin titulo/.test(low);
+      const profesional = !informal && /profesional|formal|titulo|certificado/.test(low);
       this._cv = { step: 'oficio', tipo: profesional ? 'profesional' : informal ? 'informal' : null };
       if (!this._cv.tipo) {
         return '¿Tu hoja de vida es <b>profesional</b> (títulos, certificados) o <b>informal</b> (experiencia de oficio)?';
       }
+      return `Perfecto, HV ${this._cv.tipo}. ¿Cuál es tu oficio? (${CHAMBAYA.TRADES.slice(0, 6).join(', ')}…)`;
     }
     if (!this._cv.tipo) {
-      this._cv.tipo = /profesional|formal/.test(low) ? 'profesional' : 'informal';
+      const informal = /informal|oficio|empiric|sin titulo/.test(low);
+      this._cv.tipo = (!informal && /profesional|formal/.test(low)) ? 'profesional' : 'informal';
       this._cv.step = 'oficio';
       return `Perfecto, HV ${this._cv.tipo}. ¿Cuál es tu oficio? (${CHAMBAYA.TRADES.slice(0, 6).join(', ')}…)`;
     }
@@ -265,18 +269,158 @@ class Chatbot {
     ).join('<br>')}<br><br>Ábrelos en el Directorio y usa <b>Enviar chamba</b> para sugerirles el trabajo.`;
   }
 
+  _normalizeDate(raw) {
+    const low = raw.trim().toLowerCase();
+    const pad = n => String(n).padStart(2, '0');
+    const localIso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    if (/^hoy$/.test(low)) return localIso(new Date());
+    if (/^ma(ñ|n)ana$/.test(low)) {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      return localIso(d);
+    }
+    const valid = (y, m, day) => {
+      const d = new Date(y, m - 1, day);
+      return d.getFullYear() === y && d.getMonth() === m - 1 && d.getDate() === day ? d : null;
+    };
+    let m = low.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (m) {
+      const d = valid(Number(m[1]), Number(m[2]), Number(m[3]));
+      return d ? localIso(d) : null;
+    }
+    m = low.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+    if (m) {
+      const d = valid(Number(m[3]), Number(m[2]), Number(m[1]));
+      return d ? localIso(d) : null;
+    }
+    return null;
+  }
+
+  _normalizeTime(raw) {
+    const low = raw.trim().toLowerCase();
+    const m = low.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
+    if (!m) return null;
+    let h = Number(m[1]);
+    const min = Number(m[2] || 0);
+    const suffix = m[3];
+    if (suffix === 'pm' && h < 12) h += 12;
+    if (suffix === 'am' && h === 12) h = 0;
+    if (h > 23 || min > 59) return null;
+    return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+  }
+
+  /** RF05 / HU-07: asistente conversacional para publicar una solicitud. */
+  async _quoteStep(text) {
+    const raw = text.trim();
+    const low = raw.toLowerCase();
+    if (/^(cancelar|salir|detener)$/.test(low)) {
+      this._quote = null;
+      return 'Solicitud cancelada. Puedes escribir “Publicar solicitud” cuando quieras retomarla.';
+    }
+    if (!this._quote) {
+      this._quote = { step: 'service' };
+      return `Vamos a publicar tu solicitud. ¿Qué servicio necesitas?<br><span class="muted small">${CHAMBAYA.TRADES.join(' · ')}</span>`;
+    }
+    if (this._quote.step === 'service') {
+      const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const service = CHAMBAYA.TRADES.find(t => norm(t) === norm(raw) || norm(raw).includes(norm(t).slice(0, 6)));
+      if (!service) return `Elige uno de estos oficios: ${CHAMBAYA.TRADES.join(', ')}.`;
+      this._quote.service = service;
+      this._quote.step = 'description';
+      return 'Describe el trabajo en pocas palabras (qué falla, qué necesitas).';
+    }
+    if (this._quote.step === 'description') {
+      if (raw.length < 8) return 'Cuéntame un poco más (mínimo 8 caracteres) para que el técnico entienda el trabajo.';
+      this._quote.description = raw;
+      this._quote.step = 'date';
+      return '¿Para qué fecha? Puedes escribir <b>hoy</b>, <b>mañana</b> o <b>DD/MM/AAAA</b>.';
+    }
+    if (this._quote.step === 'date') {
+      const fecha = this._normalizeDate(raw);
+      if (!fecha) return 'No entendí la fecha. Usa <b>hoy</b>, <b>mañana</b> o <b>DD/MM/AAAA</b>.';
+      this._quote.fecha = fecha;
+      this._quote.step = 'time';
+      return '¿A qué hora? Ej: <b>10:00</b> o <b>3 pm</b>.';
+    }
+    if (this._quote.step === 'time') {
+      const hora = this._normalizeTime(raw);
+      if (!hora) return 'No entendí la hora. Usa formato <b>HH:MM</b> o <b>3 pm</b>.';
+      this._quote.hora = hora;
+      this._quote.step = 'address';
+      return '¿Cuál es la dirección exacta del servicio?';
+    }
+    if (this._quote.step === 'address') {
+      if (raw.length < 6) return 'Escribe una dirección más completa (calle, número, referencias).';
+      this._quote.address = raw;
+      this._quote.step = 'zone';
+      return `¿En qué localidad o barrio? Ej: ${CHAMBAYA.ZONES.slice(0, 5).map(z => z.name).join(', ')}.`;
+    }
+    if (this._quote.step === 'zone') {
+      if (raw.length < 3) return `Escribe una localidad válida: ${CHAMBAYA.ZONES.map(x => x.name).join(', ')}.`;
+      const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const z = CHAMBAYA.ZONES.find(x => norm(raw).includes(norm(x.name)) || norm(x.name).includes(norm(raw)));
+      if (!z) return `No reconocí esa zona. Elige una de: ${CHAMBAYA.ZONES.map(x => x.name).join(', ')}.`;
+      this._quote.zone = z.name;
+      this._quote.zona = z.name;
+      this._quote.step = 'budget';
+      return '¿Cuál es tu presupuesto aproximado en COP? (solo el número)';
+    }
+    if (this._quote.step === 'budget') {
+      const budget = Number(raw.replace(/[^\d]/g, ''));
+      if (!budget || budget < 10000) return 'Escribe un presupuesto válido en pesos, por ejemplo <b>120000</b>.';
+      this._quote.budget = budget;
+      this._quote.step = 'duration';
+      return '¿Cuánto tiempo estimas que tomará? Ej: <b>2 horas</b>, <b>1 día</b> o <b>por definir</b>.';
+    }
+    this._quote.duracionEstimada = raw || 'Por definir';
+    const draft = this._quote;
+    this._quote = null;
+    try {
+      await this._app.quotes.create({
+        clientId: this._user.uid,
+        clienteNombre: this._user.name,
+        service: draft.service,
+        description: draft.description,
+        zone: draft.zone,
+        zona: draft.zona,
+        address: draft.address,
+        fecha: draft.fecha,
+        hora: draft.hora,
+        budget: draft.budget,
+        urgencia: 'Normal',
+        duracionEstimada: draft.duracionEstimada,
+      });
+      const workers = await this._app.workers.getAll();
+      const matches = workers.filter(w => w.trade === draft.service && w.active !== false).slice(0, 12);
+      await Promise.all(matches.map(w => this._app.notif.notify({
+        usuarioId: w.id,
+        title: 'Nueva solicitud cerca',
+        desc: `${this._user.name} busca ${draft.service} en ${draft.zone} para el ${formatDate(draft.fecha)}.`,
+        icon: 'fa-briefcase', color: '#3A3A38', bg: 'rgba(58,58,56,.1)', link: 'quotes',
+      }).catch(() => {})));
+      this._ui.showToast('Solicitud publicada desde el asistente.', 'success', 5000);
+      return `Listo. Publiqué tu solicitud de <b>${escapeHtml(draft.service)}</b> en <b>${escapeHtml(draft.zone)}</b> para el <b>${formatDate(draft.fecha)}</b> a las <b>${escapeHtml(draft.hora)}</b>. Notifiqué a ${matches.length} técnico(s). Revisa las ofertas en <b>Cotizaciones</b> o abre <b>Mis solicitudes</b>.`;
+    } catch (e) {
+      return `No pude publicar la solicitud: ${escapeHtml(e.message)}. Intenta de nuevo desde Cotizaciones.`;
+    }
+  }
+
   async _generate(text) {
     await new Promise(r => setTimeout(r, 280));
     const low = text.toLowerCase();
+    const role = this._user?.role === 'trabajador' || this._user?.role === 'worker' ? 'trabajador'
+      : this._user?.role === 'admin' ? 'admin' : 'cliente';
     if (this._cv || /hoja de vida|armar hv|hv profesional|hv informal|cv profesional|cv informal/.test(low)) {
       return this._cvStep(text);
+    }
+    if (this._quote) return this._quoteStep(text);
+    if (role === 'cliente' && /^(publicar solicitud|crear solicitud|nueva solicitud|pedir servicio)$/.test(low)) {
+      return this._quoteStep(text);
     }
 
     const { intent, score, tokens } = this._classify(text);
     const entities = this._extractEntities(tokens);
     const name = (this._user?.name || '').split(' ')[0] || 'amig@';
-    const role = this._user?.role === 'trabajador' || this._user?.role === 'worker' ? 'trabajador'
-      : this._user?.role === 'admin' ? 'admin' : 'cliente';
 
     this._history.push({ text, intent, entities, ts: Date.now() });
     if (this._history.length > 12) this._history.shift();

@@ -156,18 +156,19 @@ class AuthService {
     return this.currentUser;
   }
 
-  async _localRegister({ name, email, password, zone, trade, role }) {
+  async _localRegister({ name, email, password, zone, trade, role, phone = '', documentId = '', experience = 0 }) {
     if (this._findLocalUserByEmail(email)) throw new Error('Ese correo ya está registrado.');
     if (String(password || '').length < 6) throw new Error('La contraseña debe tener al menos 6 caracteres.');
     const id = `u-${Date.now().toString(36)}`;
     await this._db.set(CHAMBAYA.COLLECTIONS.USERS, id, {
-      uid: id, nombre: name, email, telefono: '', rol: role || 'cliente', zona: zone || '',
-      oficio: trade || '', avatarColor: this._avatarColor(id), verificado: Boolean(adminByEmail(email)),
+      uid: id, nombre: name, email, telefono: phone, whatsapp: phone, documento: documentId,
+      rol: role || 'cliente', zona: zone || '', oficio: trade || '',
+      avatarColor: this._avatarColor(id), verificado: Boolean(adminByEmail(email)),
       activo: true, passHash: demoHash(password), demo: true,
       fechaRegistro: new Date().toISOString(),
       preferencias: { contactoVisible: true, notificaciones: true },
     });
-    if (role === 'trabajador') await this._ensureWorkerDoc(id, { trade, zone });
+    if (role === 'trabajador') await this._ensureWorkerDoc(id, { name, trade, zone, experience, phone });
     this._setLocalSession(id);
     this.currentUser = await this._localProfile(id);
     this._emitLocal();
@@ -233,8 +234,8 @@ class AuthService {
     }
   }
 
-  async register({ name, email, password, zone, trade, role }) {
-    if (this.mode === 'local') return this._localRegister({ name, email, password, zone, trade, role });
+  async register({ name, email, password, zone, trade, role, phone = '', document: documentId = '', experience = 0 }) {
+    if (this.mode === 'local') return this._localRegister({ name, email, password, zone, trade, role, phone, documentId, experience });
     try {
       const admin = adminByEmail(email);
       if (admin && password !== admin.password) throw new Error('Usa la clave de administrador asignada.');
@@ -247,6 +248,9 @@ class AuthService {
         role: finalRole,
         zone: admin ? '' : zone,
         trade: admin ? '' : trade,
+        phone: admin ? '' : phone,
+        document: admin ? '' : documentId,
+        experience: admin ? 0 : Number(experience) || 0,
         activo: true,
       });
       this.currentUser = await this._profileFromAuth(cred.user);
@@ -431,7 +435,9 @@ class AuthService {
       rol: role,
       zona: extras.zone || '',
       oficio: extras.trade || '',
-      telefono: '',
+      telefono: extras.phone || '',
+      whatsapp: extras.phone || '',
+      documento: extras.document || '',
       verificado: Boolean(fbUser.emailVerified),
       googleAuth: fbUser.providerData.some(p => p.providerId === 'google.com'),
       activo: extras.activo !== false,
@@ -464,8 +470,8 @@ class AuthService {
       zona: zone,
       zonasCobertura: zone ? [zone] : [],
       ubicacion: z ? { lat: z.lat, lng: z.lng } : null,
-      telefono: '',
-      whatsapp: '',
+      telefono: extras.phone || '',
+      whatsapp: extras.phone || '',
       contactoVisible: true,
       portafolio: [],
       habilidades: [],

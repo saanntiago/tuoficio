@@ -189,6 +189,15 @@ class BasePage {
   async _toggleFavorite(workerId) {
     try {
       const { added } = await this._app.favorites.toggle(this.uid, workerId);
+      if (added && this.isClient) {
+        const me = this.user?.name || 'Un cliente';
+        this._app.notif.notify({
+          usuarioId: workerId,
+          title: 'Tu perfil está en favoritos',
+          desc: `${me} guardó tu perfil para contactarte más adelante.`,
+          icon: 'fa-heart', color: '#A85B46', bg: 'rgba(168,91,70,.12)', link: 'profile',
+        }).catch(() => {});
+      }
       this._ui.showToast(added ? 'Agregado a favoritos' : 'Eliminado de favoritos', 'success');
       return added;
     } catch (e) {

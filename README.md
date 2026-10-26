@@ -36,6 +36,15 @@ Si Firestore no está disponible o las reglas aún no están desplegadas, la app
 
 En la pantalla de acceso también hay botones de **entrada rápida como empleador, trabajador o administrador**. Los datos demo se pueden restaurar desde `Configuración → Restablecer datos de demostración`.
 
+### Documentación y evidencias
+
+- [Guía de apertura en el PC](docs/GUIA_APERTURA.md)
+- [Arquitectura real](docs/ARQUITECTURA.md)
+- [Matriz RF01–RF15 / HU-01–HU-18](docs/MATRIZ_RF_HU.md)
+- [Plan de pruebas y resultados reales](docs/PLAN_PRUEBAS.md)
+- [Despliegue y publicación](docs/DESPLIEGUE.md)
+- [Entregables y capturas](docs/ENTREGABLES.md)
+
 ---
 
 ## 2. Funcionalidades
@@ -76,13 +85,13 @@ En la pantalla de acceso también hay botones de **entrada rápida como empleado
 
 | RF | Funcionalidad | HU | Estado |
 | --- | --- | --- | --- |
-| RF01 | Registro por rol | HU-01 | Implementado; el documento y el teléfono se completan en el perfil |
+| RF01 | Registro por rol | HU-01 | Implementado; el registro pide teléfono/WhatsApp y documento al trabajador |
 | RF02 | Perfil del trabajador, cobertura y visibilidad de contacto | HU-01 | Implementado |
 | RF03 | Catálogo, filtros y orden por experiencia, cercanía, calificación y disponibilidad | HU-06 | Implementado |
 | RF04 | Verificación y confianza | HU-05, HU-15 | Implementado con revisión manual; no hay integración real con MinTrabajo/Saber Hacer Vale |
-| RF05 | Chatbot para hoja de vida y recomendaciones | HU-02, HU-07 | Implementado para HV y recomendaciones; la asistencia para redactar una solicitud es guiada, no un formulario automático |
-| RF06 | Notificaciones de solicitudes y favoritos | HU-09, HU-11 | Notificaciones dentro de la app; no hay push ni correo |
-| RF07 | Portafolio antes/después | HU-04 | Implementado |
+| RF05 | Chatbot para hoja de vida y recomendaciones | HU-02, HU-07 | Implementado para HV, recomendaciones y asistente que crea la solicitud paso a paso |
+| RF06 | Notificaciones de solicitudes y favoritos | HU-09, HU-11 | In-app + aviso nativo del navegador + favoritos; push con pestaña cerrada y correo quedan pendientes de backend |
+| RF07 | Portafolio antes/después | HU-04 | Implementado con validación JPG/PNG ≤ 5 MB y video |
 | RF08 | Zonas y mapa interactivo | HU-06 | Implementado con Leaflet/OpenStreetMap; no usa Google Maps |
 | RF09 | Roles y control de permisos | HU-13 | Implementado con RBAC y reglas de Firestore |
 | RF10 | Disponibilidad y horarios | HU-03 | Implementado con Disponible, Medio tiempo y Ocupado |
@@ -93,7 +102,7 @@ En la pantalla de acceso también hay botones de **entrada rápida como empleado
 | RF15 | Cotización del cliente | HU-09 | Implementado con descripción, fecha, hora, lugar, presupuesto y duración |
 | HU-18 | Inicio de sesión con Google | HU-18 | Implementado en código; requiere habilitar Google en Firebase y dominios autorizados |
 
-La app cubre los flujos funcionales de las guías, pero hay tres diferencias de arquitectura que debes tener presentes al presentar: usa **Firestore** en lugar de MySQL, **Leaflet/OpenStreetMap** en lugar de Google Maps y **Firebase Auth** en lugar de un backend propio con middleware JWT. La verificación institucional con MinTrabajo/Saber Hacer Vale y las notificaciones push/correo están simuladas o pendientes.
+La app cubre los flujos funcionales de las guías, pero hay tres diferencias de arquitectura que debes tener presentes al presentar: usa **Firestore** en lugar de MySQL, **Leaflet/OpenStreetMap** en lugar de Google Maps y **Firebase Auth** en lugar de un backend propio con middleware JWT. La verificación institucional con MinTrabajo/Saber Hacer Vale y las notificaciones push/correo están simuladas o pendientes. La matriz completa, la arquitectura y los resultados de pruebas están en [`docs/`](docs/README.md).
 
 ---
 
@@ -128,7 +137,16 @@ tuoficio/
 ├── firestore.rules             # Reglas de seguridad de Firestore
 ├── storage.rules               # Límites y permisos de Storage
 ├── firebase.json
-└── firestore.indexes.json
+├── firestore.indexes.json
+└── docs/
+    ├── GUIA_APERTURA.md        # Cómo ejecutar el proyecto
+    ├── ARQUITECTURA.md         # Arquitectura real y diferencias con el informe
+    ├── MATRIZ_RF_HU.md         # Trazabilidad de requisitos e historias
+    ├── PLAN_PRUEBAS.md         # Casos y resultados reales
+    ├── DESPLIEGUE.md           # Publicación local/GitHub/Firebase
+    ├── ENTREGABLES.md          # Documentos fuente y capturas
+    ├── entregables/            # PDF/PPTX/DOCX originales
+    └── evidencias/             # Capturas de la app en ejecución
 ```
 
 Las páginas antiguas (`dashboard-cliente.html`, `dashboard-trabajador.html`, `dashboard-admin.html`, `mockup.html`, `perfil-trabajador.html`) se conservan como redirecciones para no romper enlaces existentes.
@@ -192,14 +210,22 @@ En Firebase Console → Authentication → Sign-in method:
 
 ## 5. Flujos de prueba sugeridos
 
-1. **Público:** abre `buscar.html`, filtra por `Chapinero` y radio `5 km`; deben aparecer Carlos, Lucía y Julián con distancia.
-2. **Perfil:** abre `perfil.html?id=w-carlos`; verifica badge, 4.7 de calificación, 3 reseñas y 2 proyectos de portafolio.
+1. **Público:** abre `buscar.html`, filtra por `Chapinero` y radio `5 km`; deben aparecer Carlos, Lucía y Julián con distancia. Cambia a vista Mapa.
+2. **Perfil:** abre `perfil.html?id=w-carlos`; verifica badge, 4.7 de calificación, 3 reseñas, tarifas y 2 proyectos de portafolio.
 3. **Empleador:** entra como `ana@demo.tuoficio.co` → solicita cotización directa a Carlos con fecha, hora, dirección y presupuesto.
-4. **Trabajador:** entra como `carlos@demo.tuoficio.co` → revisa la notificación, acepta la solicitud y consulta “Reseñas recibidas”.
-5. **Reseña:** como empleador, entra al trabajo `j-hist` (Finalizado) y crea una reseña; el botón solo aparece si no existe una previa.
-6. **Reporte:** en un trabajo activo o dentro de las 24 h posteriores a finalizar, crea un reporte.
-7. **Administrador:** entra con `admin1@chambaya.com` → aprueba la verificación `v1` de Julián y resuelve el reporte `rp1`.
-8. **Google:** prueba “Continuar con Google” cuando el proveedor esté habilitado en Firebase.
+4. **Chatbot:** como Ana, abre el chatbot y escribe **“Publicar solicitud”**; responde oficio, descripción, fecha, hora, dirección, zona, presupuesto y duración. La solicitud se crea y se notifica a los técnicos.
+5. **Favoritos:** guarda a Carlos en favoritos; Carlos recibe una notificación.
+6. **Trabajador:** entra como `carlos@demo.tuoficio.co` → revisa notificaciones, cambia disponibilidad, agrega un proyecto al portafolio y consulta “Reseñas recibidas”.
+7. **Verificación:** como Carlos, envía documento + selfie; como admin, apruébala y comprueba el badge.
+8. **Reseña:** como empleador, entra al trabajo `j-hist` (Finalizado) y crea una reseña; el botón solo aparece si no existe una previa.
+9. **Reporte:** en un trabajo activo o dentro de las 24 h posteriores a finalizar, crea un reporte como cliente o trabajador.
+10. **Administrador:** entra con `admin1@chambaya.com` → revisa verificaciones, reportes y usuarios; aplica una advertencia.
+11. **Avisos del navegador:** Configuración → “Activar”; el navegador pedirá permiso. El push real con la pestaña cerrada no está implementado.
+12. **Google:** prueba “Continuar con Google” cuando el proveedor esté habilitado en Firebase y el dominio autorizado.
+
+### Resultados de la última corrida
+
+Se ejecutaron los flujos en modo demostración local el 25 de octubre de 2026. Resultado: **13 HU cumplen**, **4 cumplen con limitación** (portafolio con archivo real, notificaciones nativas, reglas Firestore y validación institucional) y **1 está bloqueada** (Google Login real). El detalle, los IDs y las pruebas no ejecutadas están en [docs/PLAN_PRUEBAS.md](docs/PLAN_PRUEBAS.md).
 
 ---
 
@@ -212,17 +238,23 @@ En Firebase Console → Authentication → Sign-in method:
 - **Reseñas verificadas:** solo se permiten sobre trabajos finalizados y sin reseña previa.
 - **Reportes con ventana:** solo durante un trabajo activo o dentro de las 24 h posteriores a su finalización.
 - **Verificación:** el técnico no puede autoaprobarse; el badge solo lo otorga un administrador.
+- **Asistente de solicitud:** el chatbot recoge los datos mínimos y crea la cotización; no es solo un texto de ayuda.
+- **Notificaciones:** in-app inmediatas y aviso nativo opcional del navegador. El push con la pestaña cerrada requiere backend.
+- **Fechas:** las fechas `YYYY-MM-DD` se interpretan como fecha local para evitar el desfase de un día.
 - **Compatibilidad:** las páginas antiguas redirigen a las nuevas rutas para conservar enlaces.
 
 ---
 
 ## 7. Limitaciones conocidas
 
-- El proyecto desplegado en `chambaya-45541` requiere ejecutar `firebase deploy --only firestore:rules` para salir del modo demo.
-- El inicio de sesión con Google requiere habilitar el proveedor y los dominios autorizados en Firebase.
+- El proyecto `chambaya-45541` requiere ejecutar `firebase deploy --only firestore:rules,storage` para salir del modo demo. En el equipo de prueba no hay Firebase CLI ni sesión, así que las reglas **no están desplegadas**.
+- El inicio de sesión con Google requiere habilitar el proveedor y los dominios autorizados en Firebase. El botón existe, pero el flujo real no se ha probado.
 - En modo demo los datos son locales al navegador y no se sincronizan entre dispositivos.
-- No se incluyen Cloud Functions; las reglas y la lógica del cliente cubren los flujos académicos.
+- No se incluyen Cloud Functions; el push con la pestaña cerrada y el correo automático requieren backend/FCM o un proveedor de correo con credenciales.
+- La validación con MinTrabajo/Saber Hacer Vale es manual: no hay API pública documentada.
 - Los mapas usan OpenStreetMap/Leaflet y no requieren API key.
+- No se pudo verificar un despliegue público: el repositorio no tenía Pages habilitado y no hay credenciales de hosting en este entorno.
+- El informe de la Guía 6 menciona MySQL/JWT/Google Maps; la implementación real es Firestore/Firebase Auth/Leaflet. Ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
 
 ---
 

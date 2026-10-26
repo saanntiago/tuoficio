@@ -45,6 +45,7 @@ class UIManager {
     this._pages = {};
     this._currentPage = null;
     this._notifs = [];
+    this._notifSeen = null;
     this._notifOpen = false;
     this.closeModal();
     document.getElementById('notifPanel')?.classList.remove('open');
@@ -95,6 +96,8 @@ class UIManager {
     if (trade) trade.style.display = role === 'trabajador' ? 'block' : 'none';
     const experience = document.getElementById('regExperienceGroup');
     if (experience) experience.style.display = role === 'trabajador' ? 'block' : 'none';
+    const doc = document.getElementById('regDocGroup');
+    if (doc) doc.style.display = role === 'trabajador' ? 'block' : 'none';
   }
 
   async doLogin() {
@@ -120,6 +123,8 @@ class UIManager {
     const last = document.getElementById('regLast')?.value.trim();
     const email = document.getElementById('regEmail')?.value.trim();
     const pass = document.getElementById('regPass')?.value;
+    const phone = document.getElementById('regPhone')?.value.trim() || '';
+    const documentId = document.getElementById('regDoc')?.value.trim() || '';
     const zone = document.getElementById('regZone')?.value.trim();
     const trade = document.getElementById('regTrade')?.value || null;
     const experience = document.getElementById('regExperience')?.value || 0;
@@ -138,6 +143,14 @@ class UIManager {
       this._showAuthError('registerError', 'Selecciona tu oficio.');
       return;
     }
+    if (!admin && role === 'trabajador' && !phone) {
+      this._showAuthError('registerError', 'Ingresa tu teléfono o WhatsApp para que los clientes puedan contactarte.');
+      return;
+    }
+    if (!admin && role === 'trabajador' && !documentId) {
+      this._showAuthError('registerError', 'Ingresa tu documento de identidad para la verificación.');
+      return;
+    }
     this._setLoading('registerBtn', true, 'Creando cuenta...');
     this._clearAuthErrors();
     try {
@@ -147,6 +160,8 @@ class UIManager {
         zone: admin ? '' : zone,
         trade: admin ? '' : trade,
         experience: admin ? 0 : Number(experience) || 0,
+        phone: admin ? '' : phone,
+        document: admin ? '' : documentId,
         role,
       });
       this.showToast(admin
@@ -461,6 +476,16 @@ class UIManager {
 
   updateNotifications(notifs) {
     this._notifs = notifs;
+    if (!this._notifSeen) {
+      this._notifSeen = new Set(notifs.map(n => n.id));
+    } else {
+      notifs.forEach(n => {
+        if (!this._notifSeen.has(n.id)) {
+          this._notifSeen.add(n.id);
+          if (!n.read) this._showBrowserNotification(n);
+        }
+      });
+    }
     const unread = notifs.filter(n => !n.read).length;
     const badge = document.getElementById('notifBadge');
     if (badge) {
@@ -485,6 +510,35 @@ class UIManager {
             <div class="notif-time">${timeAgo(n.createdAt)}</div>
           </div>
         </div>`).join('') : '<div class="empty-state" style="padding:32px"><i class="fas fa-bell-slash"></i><h3>Sin notificaciones</h3></div>'}`;
+  }
+
+  _showBrowserNotification(n) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    try {
+      const native = new Notification(n.title || 'TuOficioCol', {
+        body: n.desc || '',
+        tag: n.id,
+      });
+      native.onclick = () => {
+        window.focus();
+        if (n.link) this.navigateTo(n.link);
+        native.close();
+      };
+    } catch (e) { /* el navegador puede bloquear avisos sin servicio */ }
+  }
+
+  async enableBrowserNotifications() {
+    if (!('Notification' in window)) {
+      return this.showToast('Este navegador no permite notificaciones nativas.', 'error');
+    }
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      return this.showToast('No se concedió permiso para mostrar avisos del navegador.', 'error', 5000);
+    }
+    this.showToast('Avisos del navegador activados.', 'success');
+    try {
+      new Notification('TuOficioCol', { body: 'Recibirás avisos de solicitudes, ofertas y mensajes.' });
+    } catch (e) { /* ignorar */ }
   }
 
   async openNotification(id, link) {

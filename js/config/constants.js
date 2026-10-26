@@ -160,6 +160,10 @@ function toDate(value) {
   if (typeof value.toDate === 'function') return value.toDate();
   if (typeof value === 'object' && typeof value.seconds === 'number') return new Date(value.seconds * 1000);
   if (typeof value === 'object' && typeof value._seconds === 'number') return new Date(value._seconds * 1000);
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, day] = value.split('-').map(Number);
+    return new Date(y, m - 1, day);
+  }
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 }

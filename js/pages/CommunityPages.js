@@ -377,7 +377,9 @@ class SettingsPage extends BasePage {
             <input type="checkbox" id="prefNotif" ${prefs.notificaciones !== false ? 'checked' : ''} onchange="ui._getPage('settings').savePrefs()"/></label>
           ${this.isWorker ? `<label class="settings-toggle"><div><strong>Mostrar mi contacto</strong><p class="muted small">Teléfono y WhatsApp visibles en el perfil público.</p></div>
             <input type="checkbox" id="prefContact" ${prefs.contactoVisible !== false ? 'checked' : ''} onchange="ui._getPage('settings').savePrefs()"/></label>` : ''}
-          <p class="muted tiny">Las notificaciones se guardan en tu cuenta y aparecen en la campana.</p>`)}
+          <div class="settings-row"><div><strong>Avisos del navegador</strong><p class="muted small">Muestra solicitudes, ofertas y mensajes aunque estés en otra pestaña.</p></div>
+            <button class="btn btn-secondary btn-sm" onclick="ui.enableBrowserNotifications()">Activar</button></div>
+          <p class="muted tiny">Las notificaciones también se guardan en tu cuenta y aparecen en la campana. El push con la pestaña cerrada requiere un backend de notificaciones.</p>`)}
         ${this._section('Seguridad', `
           <div class="settings-row"><div><strong>Contraseña</strong><p class="muted small">Recibe un enlace para restablecerla.</p></div>
             <button class="btn btn-secondary btn-sm" onclick="ui._getPage('settings').resetPassword(this)">Enviar enlace</button></div>
