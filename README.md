@@ -1,4 +1,4 @@
-#  TuOficioCol (ChambaYa)
+#  TuOficio
 
 > Plataforma web para la conexión directa entre trabajadores independientes de oficio (plomeros, electricistas, carpinteros, etc.) y empleadores, organizada por localidades y barrios en Colombia.
 
