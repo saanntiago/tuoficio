@@ -4,7 +4,7 @@
 
 - Windows con Python 3 instalado (`python --version`).
 - Un navegador actualizado (Chrome, Edge o Firefox).
-- No hace falta Node, npm, MySQL ni compilar nada.
+- No hace falta MySQL ni compilar nada. Node.js LTS, npm y Firebase CLI ya están instalados para el modo Firebase/emulador.
 
 ## 2. Abrir la carpeta correcta
 
@@ -83,16 +83,28 @@ Para restaurar los datos iniciales: **Configuración → Restablecer datos de de
 
 ## 7. Firebase (opcional)
 
-El proyecto apunta a `chambaya-45541` en `js/config/firebase-config.js` y `.firebaserc`. Para usar Firestore real:
+El proyecto apunta a `chambaya-45541` en `js/config/firebase-config.js` y `.firebaserc`. Para usar Firestore y Storage reales:
 
 ```powershell
-npm install -g firebase-tools
+npm install
 firebase login
 firebase use chambaya-45541
-firebase deploy --only firestore:rules,storage
+firebase deploy --only firestore:rules,firestore:indexes,storage
+$env:GOOGLE_APPLICATION_CREDENTIALS="C:\ruta\service-account.json"
+npm run seed
 ```
 
-Si no tienes Node/npm instalados, instala Node LTS primero. Sin reglas desplegadas, la app seguirá en modo local.
+Sin reglas desplegadas, la app seguirá en modo local. La guía completa está en [Firebase real](FIREBASE.md).
+
+### Emulador local (sin credenciales)
+
+```powershell
+npm run emulators        # terminal 1
+npm run seed:emulator    # terminal 2
+python -m http.server 8123 --bind 127.0.0.1  # terminal 3
+```
+
+Abre `http://127.0.0.1:8123/app.html?emulator=1` para probar Firestore, Auth y Storage con las reglas del repositorio. Usa `?emulator=0` para volver al proyecto real.
 
 ### Google Login
 
@@ -110,7 +122,9 @@ Sin esos pasos, el botón existe pero el login real falla. La app no simula un l
 | --- | --- | --- |
 | La página no carga | El servidor no está corriendo | Ejecutar `python -m http.server ...` en la carpeta del proyecto. |
 | Se ve una versión vieja | El servidor está en otra carpeta o el navegador tiene caché | Verificar `cd`; recargar con `Ctrl+F5`. |
-| “Missing or insufficient permissions” | Reglas de Firestore no desplegadas | Usar modo demo o desplegar `firestore.rules`. |
+| “Missing or insufficient permissions” | Reglas de Firestore no desplegadas | Usar modo demo, desplegar `firestore.rules` o probar con `?emulator=1`. |
+| `storage/unauthorized` | Reglas de Storage no desplegadas | `firebase deploy --only storage`. |
+| El emulador no conecta | No está corriendo o el puerto está ocupado | Ejecutar `npm run emulators` y revisar `firebase.json`. |
 | Tarda unos segundos al entrar | `DatabaseService.probe()` intenta Firestore antes de caer a local | Esperar 8–10 segundos. |
 | Google Login falla | Proveedor/dominio no habilitado | Configurar Firebase Console. |
 | No aparece el aviso nativo | Permiso denegado por el navegador | Configuración → Avisos del navegador → permitir; recargar. |

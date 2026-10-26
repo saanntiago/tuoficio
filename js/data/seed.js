@@ -234,14 +234,14 @@ const TuOficioSeed = (() => {
       trabajadorId: 'w-andres', trabajadorNombre: 'Andrés Molina', service: 'Plomería',
       description: 'Revisión de fuga bajo lavaplatos y cambio de llave.', address: 'Calle 100 #15-20, Chicó',
       zona: 'Chapinero', presupuesto: 140000, fecha: '2026-10-25', hora: '10:00', estado: 'Activo',
-      createdAt: '2026-10-24T16:00:00.000Z',
+      resenaId: null, createdAt: '2026-10-24T16:00:00.000Z',
     },
     {
       id: 'j-hist', cotizacionId: null, clientId: 'c-ana', clienteNombre: 'Ana Rodríguez',
       trabajadorId: 'w-carlos', trabajadorNombre: 'Carlos Ramírez', service: 'Electricidad',
       description: 'Instalación de dos puntos de luz en la sala.', address: 'Calle 45 #12-30, Chapinero Alto',
       zona: 'Chapinero', presupuesto: 95000, fecha: '2026-10-24', hora: '09:00', estado: 'Finalizado',
-      finalizadoEn: new Date(Date.now() - 5 * 3600000).toISOString(),
+      resenaId: null, finalizadoEn: new Date(Date.now() - 5 * 3600000).toISOString(),
       createdAt: '2026-10-20T10:00:00.000Z',
     },
   ];

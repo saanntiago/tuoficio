@@ -13,6 +13,7 @@ class App {
     this.firebase = this.mode === 'firebase' ? initFirebase() : { configured: true, mode: 'local' };
 
     this.db = new DatabaseService(this.mode);
+    this.storage = new StorageService(this.mode);
     this.auth = new AuthService(this.db);
     this.workers = new WorkerService(this.db);
     this.quotes = new QuoteService(this.db);
@@ -27,6 +28,9 @@ class App {
     this.ui = new UIManager(this);
     this.ui.mount();
     if (this.mode === 'local') this.ui.showLocalBanner();
+    if (this.mode === 'firebase' && window.ChambaEmulator) {
+      this.ui.showToast('Conectado al emulador local de Firebase (Firestore, Auth y Storage).', 'info', 6000);
+    }
 
     if (this.mode === 'firebase') {
       try {

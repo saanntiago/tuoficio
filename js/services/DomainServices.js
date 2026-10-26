@@ -165,7 +165,12 @@ class WorkerService {
       const z = zoneByName(data.zona);
       if (z) workerPayload.ubicacion = { lat: z.lat, lng: z.lng };
     }
-    await this._db.set(this._db.COLLECTIONS.WORKERS, uid, workerPayload);
+    // Un cliente no tiene documento en `trabajadores`. No se debe crear uno
+    // vacío al guardar su perfil: las reglas exigen los campos de una hoja real.
+    const workerDoc = await this._db.get(this._db.COLLECTIONS.WORKERS, uid);
+    if (workerDoc) {
+      await this._db.set(this._db.COLLECTIONS.WORKERS, uid, workerPayload);
+    }
     const userPayload = {};
     ['nombre', 'zona', 'oficio', 'telefono', 'whatsapp', 'documento', 'preferencias'].forEach(k => {
       if (data[k] !== undefined) userPayload[k] = data[k];
@@ -219,12 +224,19 @@ class WorkerService {
       trabajoId: trabajoId || null,
       date: new Date().toISOString().slice(0, 10),
     });
-    const reviews = await this.getReviewsByWorker(workerId);
-    const avg = reviews.reduce((s, r) => s + (Number(r.rating) || 0), 0) / (reviews.length || 1);
-    await this._db.set(this._db.COLLECTIONS.WORKERS, workerId, {
-      calificacionPromedio: Number(avg.toFixed(2)),
-      totalResenas: reviews.length,
-    });
+    // La reseña ya quedó publicada. El agregado es best-effort: si las reglas
+    // no permiten recalcularlo, no se debe perder la reseña del cliente.
+    try {
+      const reviews = await this.getReviewsByWorker(workerId);
+      const avg = reviews.reduce((s, r) => s + (Number(r.rating) || 0), 0) / (reviews.length || 1);
+      await this._db.set(this._db.COLLECTIONS.WORKERS, workerId, {
+        calificacionPromedio: Number(avg.toFixed(2)),
+        totalResenas: reviews.length,
+        ultimaResenaId: id,
+      });
+    } catch (e) {
+      console.warn('TuOficio: la reseña se publicó, pero no se pudo actualizar el promedio.', e.message);
+    }
     return id;
   }
 

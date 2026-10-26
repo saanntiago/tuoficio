@@ -25,12 +25,13 @@ Copia de los documentos de la asignatura usados para la trazabilidad:
 | `evidencias/perfil-publico-carlos.png` | Perfil público con badge, tarifas, portafolio, reseñas y mapa. |
 | `evidencias/panel-cliente.png` | Panel de empleador en modo demostración local. |
 | `evidencias/chatbot-solicitud.png` | Asistente de solicitud iniciado desde el chatbot. |
+| `evidencias/emulador-admin-verificaciones.png` | Panel de verificaciones de Admin Central contra Firebase Emulator Suite; incluye la solicitud pendiente de Julián. |
 
 Las imágenes se capturaron desde la aplicación en ejecución. No son mockups.
 
 ## 3. Evidencia de pruebas
 
-La corrida funcional, los IDs generados y las limitaciones están en [PLAN_PRUEBAS.md](PLAN_PRUEBAS.md).
+La corrida funcional, los IDs generados y las limitaciones están en [PLAN_PRUEBAS.md](PLAN_PRUEBAS.md). La sección 5.1 documenta la corrida con Firebase Emulator Suite (Auth, Firestore y Storage), incluidas las pruebas de permisos y los IDs efímeros.
 
 ## 4. Evidencia que no existe en este repositorio
 

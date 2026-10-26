@@ -418,7 +418,7 @@ class AuthService {
     };
     const profile = this._baseProfile(fbUser.uid, merged);
     profile.needsRole = !admin && !doc;
-    profile.verified = Boolean(fbUser.emailVerified || admin || doc?.verificado);
+    profile.verified = Boolean(admin || doc?.verificado);
     return profile;
   }
 
@@ -438,7 +438,9 @@ class AuthService {
       telefono: extras.phone || '',
       whatsapp: extras.phone || '',
       documento: extras.document || '',
-      verificado: Boolean(fbUser.emailVerified),
+      // La verificación de identidad (documento + selfie) es independiente de
+      // que Google haya validado el correo. Se activa solo cuando un admin aprueba.
+      verificado: false,
       googleAuth: fbUser.providerData.some(p => p.providerId === 'google.com'),
       activo: extras.activo !== false,
       avatarColor: this._avatarColor(fbUser.uid),
@@ -453,11 +455,12 @@ class AuthService {
   async _ensureWorkerDoc(uid, extras = {}) {
     const existing = await this._db.get(this._db.COLLECTIONS.WORKERS, uid);
     if (existing) return existing;
+    const userDoc = await this._db.get(this._db.COLLECTIONS.USERS, uid);
     const zone = extras.zone || '';
     const z = zoneByName(zone);
     await this._db.set(this._db.COLLECTIONS.WORKERS, uid, {
       uid,
-      nombre: extras.name || '',
+      nombre: extras.name || userDoc?.nombre || '',
       oficio: extras.trade || '',
       experiencia: Number(extras.experience) || 0,
       descripcion: '',

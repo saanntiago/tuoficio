@@ -167,19 +167,36 @@ class PortfolioPage extends BasePage {
     if (!title) return fail('Escribe un título para el trabajo.');
     if (!beforeFile || !afterFile) return fail('Adjunta la foto del antes y la del después.');
 
-    this._setBusy(btn, true, 'Comprimiendo fotos...');
+    this._setBusy(btn, true, 'Subiendo fotos...');
     try {
       const [antes, despues] = await Promise.all([
-        compressImage(beforeFile, 1000, .7),
-        compressImage(afterFile, 1000, .7),
+        this._app.storage.uploadImage(beforeFile, {
+          ownerId: this.uid,
+          folder: 'portafolio',
+          visibility: 'public',
+          maxSide: 1000,
+          quality: .7,
+        }),
+        this._app.storage.uploadImage(afterFile, {
+          ownerId: this.uid,
+          folder: 'portafolio',
+          visibility: 'public',
+          maxSide: 1000,
+          quality: .7,
+        }),
       ]);
       let video = videoUrl;
       if (videoFile) {
         if (videoFile.size > (this.isLocal ? 4 : CHAMBAYA.LIMITS.VIDEO_MB) * 1024 * 1024) {
           throw new Error('El video supera el peso permitido. Pega un enlace o usa un archivo más liviano.');
         }
-        this._setBusy(btn, true, 'Adjuntando video...');
-        video = await readFileAsDataUrl(videoFile);
+        this._setBusy(btn, true, 'Subiendo video...');
+        video = await this._app.storage.uploadVideo(videoFile, {
+          ownerId: this.uid,
+          folder: 'portafolio',
+          visibility: 'public',
+          maxMb: this.isLocal ? 4 : CHAMBAYA.LIMITS.VIDEO_MB,
+        });
       }
       await this._app.workers.addPortfolioItem(this.uid, {
         titulo: title,
@@ -207,7 +224,15 @@ class PortfolioPage extends BasePage {
     });
     if (!ok) return;
     try {
+      const item = (this.items || []).find(p => p.id === itemId);
       await this._app.workers.removePortfolioItem(this.uid, itemId);
+      if (item) {
+        await Promise.all([
+          this._app.storage.deleteByUrl(item.antes),
+          this._app.storage.deleteByUrl(item.despues),
+          this._app.storage.deleteByUrl(item.video),
+        ]);
+      }
       this._ui.showToast('Proyecto eliminado.', 'success');
       this._reload();
     } catch (e) {

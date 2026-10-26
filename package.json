@@ -1,0 +1,16 @@
+{
+  "name": "tuoficio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TuOficioCol: plataforma de oficios con Firebase, Firestore y Storage.",
+  "type": "module",
+  "scripts": {
+    "seed": "node scripts/seed-firestore.mjs",
+    "seed:emulator": "node scripts/seed-firestore.mjs --emulator",
+    "emulators": "firebase emulators:start --only auth,firestore,storage --project chambaya-45541",
+    "serve": "python -m http.server 8123"
+  },
+  "devDependencies": {
+    "firebase-admin": "^13.4.0"
+  }
+}

@@ -21,20 +21,64 @@ service cloud.firestore {
     function isActive() {
       return signedIn() && (!exists(userPath(request.auth.uid)) || myUser().activo != false);
     }
+    function safeUserFields() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'nombre', 'telefono', 'whatsapp', 'zona', 'oficio', 'foto',
+        'documento', 'preferencias', 'avatarColor', 'googleAuth', 'rol', 'updatedAt'
+      ]) &&
+      (!('rol' in request.resource.data) || request.resource.data.rol in ['cliente', 'trabajador']);
+    }
+    function workerProfileFields() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'nombre', 'oficio', 'experiencia', 'descripcion', 'zona', 'zonasCobertura',
+        'ubicacion', 'horario', 'tarifas', 'telefono', 'whatsapp', 'contactoVisible',
+        'habilidades', 'tipoHojaVida', 'disponibilidad', 'portafolio', 'updatedAt'
+      ]);
+    }
+    function workerVerificationRequest() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['verificacionEstado', 'badgeVerified', 'updatedAt']) &&
+        request.resource.data.verificacionEstado == 'en_revision' &&
+        request.resource.data.badgeVerified == false;
+    }
+    function reviewAggregateUpdate(workerId) {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['calificacionPromedio', 'totalResenas', 'ultimaResenaId', 'updatedAt']) &&
+        request.auth.uid != workerId &&
+        get(/databases/$(database)/documents/resenas/$(request.resource.data.ultimaResenaId)).data.trabajadorId == workerId &&
+        get(/databases/$(database)/documents/resenas/$(request.resource.data.ultimaResenaId)).data.clienteId == request.auth.uid;
+    }
 
     /* ── Usuarios ──────────────────────────────────────────── */
     match /usuarios/{userId} {
       // Cada usuario ve su cuenta; el directorio solo expone cuentas de técnicos.
       allow read: if signedIn() && (isMe(userId) || isAdmin() || resource.data.rol == 'trabajador');
-      allow create: if isMe(userId);
-      allow update: if isMe(userId) || isAdmin();
+      // Un usuario no puede autoasignarse admin, activar cuentas ni saltarse la verificación.
+      allow create: if isMe(userId) &&
+        request.resource.data.rol in ['cliente', 'trabajador'] &&
+        request.resource.data.activo == true &&
+        request.resource.data.verificado == false &&
+        !('sancion' in request.resource.data);
+      // El propietario solo edita campos de perfil; rol, estado y sanción son del admin.
+      allow update: if isAdmin() || (isMe(userId) && isActive() && safeUserFields());
       allow delete: if isAdmin();
     }
 
     /* ── Directorio público de técnicos (RF03) ─────────────── */
     match /trabajadores/{workerId} {
       allow read: if true;
-      allow create, update: if isActive() && (isMe(workerId) || isAdmin());
+      // El técnico crea su hoja con la insignia apagada y sin reputación inventada.
+      allow create: if isActive() && isMe(workerId) &&
+        request.resource.data.badgeVerified == false &&
+        request.resource.data.verificacionEstado == 'sin_solicitar' &&
+        request.resource.data.calificacionPromedio == 0 &&
+        request.resource.data.totalResenas == 0;
+      // El propietario edita su perfil o pide revisión; no puede aprobarse la insignia.
+      allow update: if isActive() && (
+        isAdmin() ||
+        (isMe(workerId) && (workerProfileFields() || workerVerificationRequest())) ||
+        reviewAggregateUpdate(workerId)
+      );
       allow delete: if isAdmin();
     }
 
@@ -115,6 +159,8 @@ service cloud.firestore {
         isAdmin() ||
         (
           request.resource.data.clienteId == request.auth.uid &&
+          request.resource.data.rating >= 1 &&
+          request.resource.data.rating <= 5 &&
           request.resource.data.trabajoId != null &&
           get(/databases/$(database)/documents/trabajos/$(request.resource.data.trabajoId)).data.clientId == request.auth.uid &&
           get(/databases/$(database)/documents/trabajos/$(request.resource.data.trabajoId)).data.trabajadorId == request.resource.data.trabajadorId &&

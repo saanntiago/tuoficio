@@ -24,6 +24,17 @@ Plataforma web para conectar empleadores con trabajadores independientes de ofic
 
 Si Firestore no está disponible o las reglas aún no están desplegadas, la app activa automáticamente el **modo demostración local** y muestra un aviso. Los datos se guardan en `localStorage` del navegador.
 
+Para probar Firestore, Auth y Storage reales sin tocar producción existe un **modo emulador**:
+
+```powershell
+npm install
+npm run emulators        # terminal 1
+npm run seed:emulator    # terminal 2
+python -m http.server 8123 --bind 127.0.0.1  # terminal 3
+```
+
+Abre `http://127.0.0.1:8123/app.html?emulator=1`. Las instrucciones completas para el proyecto real están en [Firebase real](docs/FIREBASE.md).
+
 ### Credenciales de demostración
 
 | Rol | Correo | Contraseña |
@@ -42,6 +53,7 @@ En la pantalla de acceso también hay botones de **entrada rápida como empleado
 - [Arquitectura real](docs/ARQUITECTURA.md)
 - [Matriz RF01–RF15 / HU-01–HU-18](docs/MATRIZ_RF_HU.md)
 - [Plan de pruebas y resultados reales](docs/PLAN_PRUEBAS.md)
+- [Firebase real: Firestore, Auth y Storage](docs/FIREBASE.md)
 - [Despliegue y publicación](docs/DESPLIEGUE.md)
 - [Entregables y capturas](docs/ENTREGABLES.md)
 
@@ -127,6 +139,7 @@ tuoficio/
 │   ├── data/seed.js            # Datos demo (10 técnicos, reseñas, trabajos...)
 │   ├── services/
 │   │   ├── DatabaseService.js  # Firestore + fallback local
+│   │   ├── StorageService.js   # Firebase Storage, compresión y borrado
 │   │   ├── LocalStore.js       # Persistencia demo en localStorage
 │   │   ├── AuthService.js      # Login, registro, Google, sesión
 │   │   └── DomainServices.js   # Reglas de negocio (búsqueda, reseñas, etc.)
@@ -136,13 +149,16 @@ tuoficio/
 │   └── public.js               # Adaptador de datos para páginas públicas
 ├── firestore.rules             # Reglas de seguridad de Firestore
 ├── storage.rules               # Límites y permisos de Storage
-├── firebase.json
+├── firebase.json               # Hosting, reglas y emuladores
 ├── firestore.indexes.json
+├── package.json                # Scripts de seed y emulador
+├── scripts/seed-firestore.mjs  # Seed idempotente de Auth + Firestore
 └── docs/
     ├── GUIA_APERTURA.md        # Cómo ejecutar el proyecto
     ├── ARQUITECTURA.md         # Arquitectura real y diferencias con el informe
     ├── MATRIZ_RF_HU.md         # Trazabilidad de requisitos e historias
     ├── PLAN_PRUEBAS.md         # Casos y resultados reales
+    ├── FIREBASE.md             # Firestore, Auth, Storage, seed y emulador
     ├── DESPLIEGUE.md           # Publicación local/GitHub/Firebase
     ├── ENTREGABLES.md          # Documentos fuente y capturas
     ├── entregables/            # PDF/PPTX/DOCX originales
@@ -162,10 +178,13 @@ Proyecto configurado por defecto: **`chambaya-45541`** (ver `.firebaserc` y `js/
 Mientras las reglas no estén desplegadas, Firestore responderá `Missing or insufficient permissions` y la app usará el modo demo local.
 
 ```powershell
+npm install
 npm install -g firebase-tools
 firebase login
 firebase use chambaya-45541
-firebase deploy --only firestore:rules,storage
+firebase deploy --only firestore:rules,firestore:indexes,storage
+$env:GOOGLE_APPLICATION_CREDENTIALS="C:\ruta\service-account.json"
+npm run seed
 ```
 
 Si el proyecto aún no existe o no tienes permisos:
@@ -174,6 +193,8 @@ Si el proyecto aún no existe o no tienes permisos:
 firebase projects:list
 firebase use --add
 ```
+
+El seed crea las cuentas demo en Firebase Auth y los documentos de Firestore. No guarda contraseñas ni hashes en la base. La guía completa está en [docs/FIREBASE.md](docs/FIREBASE.md).
 
 ### 4.2 Authentication
 
@@ -192,10 +213,13 @@ En Firebase Console → Authentication → Sign-in method:
   firebase deploy --only firestore:indexes
   ```
 
-### 4.4 Storage (opcional en demo)
+### 4.4 Firebase Storage
 
-- Las imágenes se limitan a **5 MB** y los videos a **50 MB** en Firebase Storage.
-- En modo demo, las imágenes se comprimen y se guardan como Data URLs en `localStorage`; el video se limita localmente a **4 MB**.
+- Avatar y portafolio: `users/{uid}/public/...` (lectura pública).
+- Documento y selfie: `users/{uid}/private/verificacion/...` (dueño y administrador).
+- Imágenes JPG/PNG hasta **5 MB**; video MP4/WebM/MOV hasta **50 MB**.
+- Las imágenes se comprimen en el navegador antes de subirse.
+- En modo demo se guarda un Data URL; el video local se limita a **4 MB**. En modo Firebase, si Storage falla, la imagen comprimida se conserva como Data URL, pero el video exige Storage o un enlace externo.
 
 ### 4.5 Modo de datos
 
@@ -203,8 +227,21 @@ En Firebase Console → Authentication → Sign-in method:
 | --- | --- |
 | Firestore responde correctamente | Se usan datos reales de Firestore |
 | Firestore no disponible o sin permisos | Se activa el modo demo con `js/data/seed.js` |
+| `?emulator=1` en localhost | Usa Auth/Firestore/Storage en `127.0.0.1` |
+| `?emulator=0` | Vuelve al proyecto Firebase real |
 | Sesión demo | Se guarda en `tuoficio_session_uid` |
 | Base demo | Se guarda en `tuoficio_db_v1` |
+
+### 4.6 Emulador local
+
+```powershell
+npm install
+npm run emulators        # terminal 1
+npm run seed:emulator    # terminal 2
+python -m http.server 8123 --bind 127.0.0.1  # terminal 3
+```
+
+Abre `http://127.0.0.1:8123/app.html?emulator=1`. El emulador carga las reglas del repositorio y permite probar login, escrituras, Storage y bloqueos de seguridad sin tocar producción. La UI queda en `http://127.0.0.1:4000`.
 
 ---
 
@@ -225,7 +262,7 @@ En Firebase Console → Authentication → Sign-in method:
 
 ### Resultados de la última corrida
 
-Se ejecutaron los flujos en modo demostración local el 25 de octubre de 2026. Resultado: **13 HU cumplen**, **4 cumplen con limitación** (portafolio con archivo real, notificaciones nativas, reglas Firestore y validación institucional) y **1 está bloqueada** (Google Login real). El detalle, los IDs y las pruebas no ejecutadas están en [docs/PLAN_PRUEBAS.md](docs/PLAN_PRUEBAS.md).
+Se ejecutaron los flujos en modo demostración local el 25 de octubre de 2026 y con Firebase Emulator Suite el 26 de octubre de 2026. Resultado: **13 HU cumplen**, **4 cumplen con limitación** (video pesado del portafolio, notificaciones push/correo, despliegue de reglas al proyecto real y validación institucional) y **1 está bloqueada** (Google Login real). El detalle, los IDs, la corrida del emulador y las pruebas no ejecutadas están en [docs/PLAN_PRUEBAS.md](docs/PLAN_PRUEBAS.md).
 
 ---
 
@@ -247,7 +284,7 @@ Se ejecutaron los flujos en modo demostración local el 25 de octubre de 2026. R
 
 ## 7. Limitaciones conocidas
 
-- El proyecto `chambaya-45541` requiere ejecutar `firebase deploy --only firestore:rules,storage` para salir del modo demo. En el equipo de prueba no hay Firebase CLI ni sesión, así que las reglas **no están desplegadas**.
+- El proyecto `chambaya-45541` requiere ejecutar `firebase deploy --only firestore:rules,firestore:indexes,storage` y `npm run seed` para salir del modo demo. Firebase CLI, Node y npm ya están instalados, pero en el equipo de prueba no hay sesión ni cuenta de servicio, así que las reglas **no están desplegadas en el proyecto real**. El emulador sí fue probado con las reglas del repositorio.
 - El inicio de sesión con Google requiere habilitar el proveedor y los dominios autorizados en Firebase. El botón existe, pero el flujo real no se ha probado.
 - En modo demo los datos son locales al navegador y no se sincronizan entre dispositivos.
 - No se incluyen Cloud Functions; el push con la pestaña cerrada y el correo automático requieren backend/FCM o un proveedor de correo con credenciales.

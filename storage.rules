@@ -7,11 +7,18 @@ service firebase.storage {
     }
 
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/usuarios/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin';
     }
 
     function isImageOrVideo() {
-      return request.resource.contentType.matches('image/.*') || request.resource.contentType.matches('video/.*');
+      return request.resource.contentType.matches('image/.*') ||
+             request.resource.contentType.matches('video/.*');
     }
 
     // HU-07: imágenes hasta 5 MB y video del portafolio hasta 50 MB.
@@ -20,9 +27,18 @@ service firebase.storage {
              (request.resource.contentType.matches('video/.*') && request.resource.size <= 50 * 1024 * 1024);
     }
 
-    match /users/{userId}/{allPaths=**} {
+    // Avatar y portafolio: lectura pública para que se vean en el directorio.
+    match /users/{userId}/public/{allPaths=**} {
       allow read: if true;
-      allow write: if isAuthenticated() && isOwner(userId) && isImageOrVideo() && isValidSize();
+      allow write: if isOwner(userId) && isImageOrVideo() && isValidSize();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // Documento de identidad y selfie: solo el dueño o un administrador.
+    match /users/{userId}/private/{allPaths=**} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) && isImageOrVideo() && isValidSize();
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     match /public/{allPaths=**} {

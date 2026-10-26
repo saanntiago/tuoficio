@@ -242,9 +242,15 @@ class ProfilePage extends BasePage {
     if (!/^image\/(jpeg|png)$/.test(file.type)) return this._ui.showToast('Usa una imagen JPG o PNG.', 'error');
     if (file.size > CHAMBAYA.LIMITS.IMAGE_MB * 1024 * 1024) return this._ui.showToast(`La imagen supera ${CHAMBAYA.LIMITS.IMAGE_MB} MB.`, 'error');
     try {
-      const dataUrl = await compressImage(file, 500, .8);
-      await this._app.db.update(CHAMBAYA.COLLECTIONS.USERS, this.uid, { foto: dataUrl });
-      this.user.avatarUrl = dataUrl;
+      const foto = await this._app.storage.uploadImage(file, {
+        ownerId: this.uid,
+        folder: 'avatar',
+        visibility: 'public',
+        maxSide: 500,
+        quality: .8,
+      });
+      await this._app.db.update(CHAMBAYA.COLLECTIONS.USERS, this.uid, { foto });
+      this.user.avatarUrl = foto;
       this._ui._updateHeaderUser(this.user);
       this._ui.showToast('Foto actualizada', 'success');
       this._reload();
@@ -370,11 +376,23 @@ class ProfilePage extends BasePage {
     if (!number) return fail('Escribe el número de tu documento.');
     if (!docFile || !selfieFile) return fail('Adjunta el documento y la foto de tu rostro.');
 
-    this._setBusy(btn, true, 'Comprimiendo y enviando...');
+    this._setBusy(btn, true, 'Subiendo documentos...');
     try {
       const [documentoUrl, selfieUrl] = await Promise.all([
-        compressImage(docFile, 1100, .72),
-        compressImage(selfieFile, 800, .72),
+        this._app.storage.uploadImage(docFile, {
+          ownerId: this.uid,
+          folder: 'verificacion',
+          visibility: 'private',
+          maxSide: 1100,
+          quality: .72,
+        }),
+        this._app.storage.uploadImage(selfieFile, {
+          ownerId: this.uid,
+          folder: 'verificacion',
+          visibility: 'private',
+          maxSide: 800,
+          quality: .72,
+        }),
       ]);
       await this._app.verifications.request(this.uid, {
         nombre: this.user.name,
