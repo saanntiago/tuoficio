@@ -45,12 +45,10 @@ class JobsPage extends BasePage {
   _view() {
     const active = this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.ACTIVE);
     const done = this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.DONE);
+    const reviewed = done.filter(j => this.reviewsByJob[j.id] || j.resenaId);
     const cancelled = this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.CANCELLED);
     const pendingReviews = this.isClient ? done.filter(j => this._app.jobs.canReview(j, this.uid) && !this.reviewsByJob[j.id]) : [];
-    const filtered = this.tab === 'active' ? active
-      : this.tab === 'done' ? done
-        : this.tab === 'cancelled' ? cancelled
-          : this.jobs;
+    const filtered = this._jobsForTab(this.tab);
 
     return `
       ${this._header('Mis trabajos', this.isWorker
@@ -63,14 +61,15 @@ class JobsPage extends BasePage {
         Tu opinión ayuda a otros empleadores a elegir mejor.</div>
       </div>` : ''}
       <div class="stats-grid">
-        ${this._statCard('fa-circle-play', '#4E7A5C', 'rgba(78,122,92,.12)', active.length, 'En curso', 'Servicios activos')}
-        ${this._statCard('fa-circle-check', '#3A3A38', 'rgba(58,58,56,.1)', done.length, 'Finalizados', 'Con reseña disponible')}
-        ${this._statCard('fa-star', '#B8914A', 'rgba(184,145,74,.14)', done.filter(j => this.reviewsByJob[j.id] || j.resenaId).length, 'Calificados', 'Reseñas publicadas')}
-        ${this._statCard('fa-ban', '#A85B46', 'rgba(168,91,70,.12)', cancelled.length, 'Cancelados', 'Historial')}
+        ${this._statCard('fa-circle-play', '#4E7A5C', 'rgba(78,122,92,.12)', active.length, 'En curso', 'Servicios activos', "ui._getPage('jobs').setTab('active', true)", 'active', this.tab === 'active')}
+        ${this._statCard('fa-circle-check', '#3A3A38', 'rgba(58,58,56,.1)', done.length, 'Finalizados', 'Con reseña disponible', "ui._getPage('jobs').setTab('done', true)", 'done', this.tab === 'done')}
+        ${this._statCard('fa-star', '#B8914A', 'rgba(184,145,74,.14)', reviewed.length, 'Calificados', 'Reseñas publicadas', "ui._getPage('jobs').setTab('reviewed', true)", 'reviewed', this.tab === 'reviewed')}
+        ${this._statCard('fa-ban', '#A85B46', 'rgba(168,91,70,.12)', cancelled.length, 'Cancelados', 'Historial', "ui._getPage('jobs').setTab('cancelled', true)", 'cancelled', this.tab === 'cancelled')}
       </div>
       <div class="tabs-bar">
         <button class="tab-btn ${this.tab === 'active' ? 'active' : ''}" onclick="ui._getPage('jobs').setTab('active')">En curso ${active.length ? `<span class="tab-count">${active.length}</span>` : ''}</button>
         <button class="tab-btn ${this.tab === 'done' ? 'active' : ''}" onclick="ui._getPage('jobs').setTab('done')">Finalizados ${pendingReviews.length ? `<span class="tab-count">${pendingReviews.length}</span>` : ''}</button>
+        <button class="tab-btn ${this.tab === 'reviewed' ? 'active' : ''}" onclick="ui._getPage('jobs').setTab('reviewed')">Calificados ${reviewed.length ? `<span class="tab-count">${reviewed.length}</span>` : ''}</button>
         <button class="tab-btn ${this.tab === 'cancelled' ? 'active' : ''}" onclick="ui._getPage('jobs').setTab('cancelled')">Cancelados</button>
         <button class="tab-btn ${this.tab === 'all' ? 'active' : ''}" onclick="ui._getPage('jobs').setTab('all')">Todos</button>
       </div>
@@ -81,7 +80,8 @@ class JobsPage extends BasePage {
     if (!list.length) {
       const msg = this.tab === 'active' ? 'No tienes trabajos en curso.'
         : this.tab === 'done' ? 'Aún no hay trabajos finalizados.'
-          : this.tab === 'cancelled' ? 'No hay trabajos cancelados.' : 'Todavía no tienes trabajos.';
+          : this.tab === 'reviewed' ? 'Aún no has calificado ningún servicio.'
+            : this.tab === 'cancelled' ? 'No hay trabajos cancelados.' : 'Todavía no tienes trabajos.';
       return this._empty('fa-clipboard', msg,
         this.isWorker ? 'Postúlate a una solicitud cercana para conseguir tu primer trabajo.' : 'Contrata a un técnico desde el directorio o publica una solicitud.',
         `<button class="btn btn-primary" onclick="ui.navigateTo('${this.isWorker ? 'quotes' : 'workers'}')">${this.isWorker ? 'Ver solicitudes' : 'Buscar técnico'}</button>`);
@@ -103,15 +103,23 @@ class JobsPage extends BasePage {
     }).join('')}</div>`;
   }
 
-  setTab(tab) {
+  _jobsForTab(tab) {
+    if (tab === 'active') return this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.ACTIVE);
+    if (tab === 'done') return this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.DONE);
+    if (tab === 'reviewed') return this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.DONE && (this.reviewsByJob[j.id] || j.resenaId));
+    if (tab === 'cancelled') return this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.CANCELLED);
+    return this.jobs;
+  }
+
+  setTab(tab, scroll = false) {
     this.tab = tab;
-    const list = tab === 'active' ? this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.ACTIVE)
-      : tab === 'done' ? this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.DONE)
-        : tab === 'cancelled' ? this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.CANCELLED)
-          : this.jobs;
     const body = document.getElementById('jobsTabBody');
-    if (body) body.innerHTML = this._renderJobs(list);
+    if (body) body.innerHTML = this._renderJobs(this._jobsForTab(tab));
     document.querySelectorAll('.tabs-bar .tab-btn').forEach(b => b.classList.toggle('active', b.getAttribute('onclick')?.includes(`'${tab}'`)));
+    this._syncStatCards(tab);
+    if (scroll) {
+      requestAnimationFrame(() => document.getElementById('jobsTabBody')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+    }
   }
 
   async finish(jobId, btn) {

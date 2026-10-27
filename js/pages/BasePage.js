@@ -56,12 +56,31 @@ class BasePage {
     </div>`;
   }
 
-  _statCard(icon, color, bg, value, label, foot = '') {
-    return `<div class="stat-card">
+  _statCard(icon, color, bg, value, label, foot = '', action = '', statKey = '', active = false) {
+    const tag = action ? 'button' : 'div';
+    const attrs = action
+      ? `type="button" class="stat-card stat-card-action${active ? ' is-active' : ''}" data-stat="${escapeHtml(statKey)}" aria-pressed="${active}" onclick="${action}" aria-label="Ver ${escapeHtml(label)}"`
+      : 'class="stat-card"';
+    return `<${tag} ${attrs}>
       <div class="stat-icon" style="background:${bg}"><i class="fas ${icon}" style="color:${color}"></i></div>
       <div class="stat-value">${value}</div>
       <div class="stat-label">${escapeHtml(label)}</div>
       ${foot ? `<div class="stat-foot">${foot}</div>` : ''}
+    </${tag}>`;
+  }
+
+  _syncStatCards(activeKey) {
+    document.querySelectorAll('.stat-card-action[data-stat]').forEach(card => {
+      const active = Boolean(activeKey) && card.dataset.stat === activeKey;
+      card.classList.toggle('is-active', active);
+      card.setAttribute('aria-pressed', String(active));
+    });
+  }
+
+  _filterBanner(icon, label, count, clearAction) {
+    return `<div class="list-filter-bar">
+      <span><i class="fas ${icon}"></i> Mostrando <strong>${escapeHtml(label)}</strong> · ${count} resultado${count === 1 ? '' : 's'}</span>
+      <button type="button" class="link-btn" onclick="${clearAction}"><i class="fas fa-rotate-left"></i> Ver todas</button>
     </div>`;
   }
 

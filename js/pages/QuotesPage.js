@@ -7,6 +7,8 @@ class QuotesPage extends BasePage {
   constructor(app, ui) {
     super(app, ui);
     this.tab = 'main';
+    this.filter = 'all';
+    this.offerFilter = 'all';
     this.quotes = [];
     this.offersByQuote = {};
     this.offers = [];
@@ -42,6 +44,7 @@ class QuotesPage extends BasePage {
     if (!this._alive) return;
 
     container.innerHTML = this.isWorker ? this._workerView() : this.isAdmin ? this._adminView() : this._clientView();
+    if (this.isClient && this.tab === 'main' && this.filter === 'offers') this._expandClientOffers();
     if (params.new && this.isClient) this.openQuoteModal();
   }
 
@@ -56,10 +59,10 @@ class QuotesPage extends BasePage {
       ${this._header('Mis solicitudes', 'Publica lo que necesitas y recibe ofertas de técnicos verificados. También puedes enviar una solicitud directa desde cualquier perfil.',
         `<button class="btn btn-primary" onclick="ui._getPage('quotes').openQuoteModal()"><i class="fas fa-plus"></i> Nueva solicitud</button>`)}
       <div class="stats-grid">
-        ${this._statCard('fa-file-circle-check', '#4E7A5C', 'rgba(78,122,92,.12)', active.length, 'Solicitudes activas', 'Esperando ofertas')}
-        ${this._statCard('fa-hand-holding-dollar', '#B8914A', 'rgba(184,145,74,.14)', totalOffers, 'Ofertas recibidas', 'De técnicos interesados')}
-        ${this._statCard('fa-clipboard-check', '#3A3A38', 'rgba(58,58,56,.1)', assigned.length, 'Servicios contratados', 'Con técnico asignado')}
-        ${this._statCard('fa-paper-plane', '#A85B46', 'rgba(168,91,70,.12)', pendingSuggestions.length, 'Solicitudes directas', 'Enviadas a un técnico')}
+        ${this._statCard('fa-file-circle-check', '#4E7A5C', 'rgba(78,122,92,.12)', active.length, 'Solicitudes activas', 'Esperando ofertas', "ui._getPage('quotes').showClientSection('open')", 'open', this.tab === 'main' && this.filter === 'open')}
+        ${this._statCard('fa-hand-holding-dollar', '#B8914A', 'rgba(184,145,74,.14)', totalOffers, 'Ofertas recibidas', 'De técnicos interesados', "ui._getPage('quotes').showClientSection('offers')", 'offers', this.tab === 'main' && this.filter === 'offers')}
+        ${this._statCard('fa-clipboard-check', '#3A3A38', 'rgba(58,58,56,.1)', assigned.length, 'Servicios contratados', 'Con técnico asignado', "ui._getPage('quotes').showClientSection('assigned')", 'assigned', this.tab === 'main' && this.filter === 'assigned')}
+        ${this._statCard('fa-paper-plane', '#A85B46', 'rgba(168,91,70,.12)', pendingSuggestions.length, 'Solicitudes directas', 'Enviadas a un técnico', "ui._getPage('quotes').showClientSection('direct')", 'direct', this.tab === 'direct')}
       </div>
       <div class="tabs-bar">
         <button class="tab-btn ${this.tab === 'main' ? 'active' : ''}" onclick="ui._getPage('quotes').setTab('main')">Solicitudes publicadas</button>
@@ -68,13 +71,36 @@ class QuotesPage extends BasePage {
       <div id="quotesTabBody">${this.tab === 'direct' ? this._clientSuggestions() : this._clientQuotes()}</div>`;
   }
 
+  _filteredClientQuotes() {
+    if (this.filter === 'open') return this.quotes.filter(q => q.status === CHAMBAYA.QUOTE_STATUS.OPEN);
+    if (this.filter === 'assigned') return this.quotes.filter(q => q.status === CHAMBAYA.QUOTE_STATUS.ASSIGNED);
+    if (this.filter === 'offers') {
+      return this.quotes.filter(q => (this.offersByQuote[q.id] || []).some(o => o.estado !== 'Rechazada'));
+    }
+    return this.quotes;
+  }
+
   _clientQuotes() {
     if (!this.quotes.length) {
       return this._empty('fa-file-circle-plus', 'Todavía no has publicado solicitudes',
         'Cuéntanos qué necesitas y los técnicos de tu zona te enviarán sus ofertas.',
         '<button class="btn btn-primary" onclick="ui._getPage(\'quotes\').openQuoteModal()"><i class="fas fa-plus"></i> Crear mi primera solicitud</button>');
     }
-    return `<div class="quote-list">${this.quotes.map(q => {
+    const quotes = this._filteredClientQuotes();
+    const filterMeta = {
+      open: { icon: 'fa-file-circle-check', label: 'solicitudes activas' },
+      offers: { icon: 'fa-hand-holding-dollar', label: 'solicitudes con ofertas' },
+      assigned: { icon: 'fa-clipboard-check', label: 'servicios contratados' },
+    }[this.filter];
+    if (!quotes.length) {
+      return this._empty('fa-filter-circle-xmark', 'Sin resultados en este filtro',
+        `No tienes ${filterMeta ? filterMeta.label : 'solicitudes que coincidan'} por ahora.`,
+        '<button class="btn btn-secondary" onclick="ui._getPage(\'quotes\').showClientSection(\'all\')"><i class="fas fa-rotate-left"></i> Ver todas</button>');
+    }
+    const banner = filterMeta
+      ? this._filterBanner(filterMeta.icon, filterMeta.label, quotes.length, "ui._getPage('quotes').showClientSection('all')")
+      : '';
+    return `${banner}<div class="quote-list">${quotes.map(q => {
       const offers = this.offersByQuote[q.id] || [];
       const open = q.status === CHAMBAYA.QUOTE_STATUS.OPEN;
       return `<article class="quote-card ${open ? '' : 'closed'}">
@@ -170,10 +196,10 @@ class QuotesPage extends BasePage {
       ${this._header('Solicitudes y ofertas', 'Encuentra trabajos compatibles con tu oficio y tu zona. Envía una oferta con tu precio y tiempo estimado.',
         `<button class="btn btn-secondary" onclick="ui.navigateTo('availability')"><i class="fas fa-clock"></i> Mi disponibilidad</button>`)}
       <div class="stats-grid">
-        ${this._statCard('fa-briefcase', '#4E7A5C', 'rgba(78,122,92,.12)', this.quotes.length, 'Solicitudes cercanas', 'Según oficio y zona')}
-        ${this._statCard('fa-paper-plane', '#B8914A', 'rgba(184,145,74,.14)', this.offers.length, 'Ofertas enviadas', 'En espera de respuesta')}
-        ${this._statCard('fa-envelope-open-text', '#3A3A38', 'rgba(58,58,56,.1)', pendingSuggestions.length, 'Solicitudes directas', 'Clientes interesados')}
-        ${this._statCard('fa-handshake', '#A85B46', 'rgba(168,91,70,.12)', this.offers.filter(o => o.estado === 'Aceptada').length, 'Ofertas aceptadas', 'Trabajos ganados')}
+        ${this._statCard('fa-briefcase', '#4E7A5C', 'rgba(78,122,92,.12)', this.quotes.length, 'Solicitudes cercanas', 'Según oficio y zona', "ui._getPage('quotes').showWorkerSection('nearby')", 'nearby', this.tab === 'main')}
+        ${this._statCard('fa-paper-plane', '#B8914A', 'rgba(184,145,74,.14)', this.offers.length, 'Ofertas enviadas', 'En espera de respuesta', "ui._getPage('quotes').showWorkerSection('offers')", 'offers', this.tab === 'offers' && this.offerFilter === 'all')}
+        ${this._statCard('fa-envelope-open-text', '#3A3A38', 'rgba(58,58,56,.1)', pendingSuggestions.length, 'Solicitudes directas', 'Clientes interesados', "ui._getPage('quotes').showWorkerSection('direct')", 'direct', this.tab === 'direct')}
+        ${this._statCard('fa-handshake', '#A85B46', 'rgba(168,91,70,.12)', this.offers.filter(o => o.estado === 'Aceptada').length, 'Ofertas aceptadas', 'Trabajos ganados', "ui._getPage('quotes').showWorkerSection('accepted')", 'accepted', this.tab === 'offers' && this.offerFilter === 'accepted')}
       </div>
       <div class="tabs-bar">
         <button class="tab-btn ${this.tab === 'main' ? 'active' : ''}" onclick="ui._getPage('quotes').setTab('main')">Cercanas a mí</button>
@@ -217,20 +243,29 @@ class QuotesPage extends BasePage {
   }
 
   _workerOffers() {
+    const onlyAccepted = this.offerFilter === 'accepted';
     if (!this.offers.length) {
-      return this._empty('fa-paper-plane', 'Aún no has enviado ofertas', 'Explora las solicitudes cercanas y envía tu propuesta con precio y tiempo estimado.');
+      return this._empty(onlyAccepted ? 'fa-handshake' : 'fa-paper-plane',
+        onlyAccepted ? 'Aún no tienes ofertas aceptadas' : 'Aún no has enviado ofertas',
+        onlyAccepted ? 'Cuando un cliente acepte una de tus propuestas, la verás aquí.' : 'Explora las solicitudes cercanas y envía tu propuesta con precio y tiempo estimado.');
     }
-    const quoteById = {};
-    this.workers.forEach(() => {});
-    const sorted = [...this.offers].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
-    return `<div class="quote-list">${sorted.map(o => {
-      const quote = quoteById[o.cotizacionId] || null;
+    const offers = onlyAccepted ? this.offers.filter(o => o.estado === 'Aceptada') : this.offers;
+    if (!offers.length) {
+      return this._empty('fa-handshake', 'Aún no tienes ofertas aceptadas',
+        'Cuando un cliente acepte una de tus propuestas, la verás aquí y el trabajo aparecerá en Mis trabajos.',
+        '<button class="btn btn-secondary" onclick="ui._getPage(\'quotes\').showWorkerSection(\'offers\')"><i class="fas fa-rotate-left"></i> Ver todas mis ofertas</button>');
+    }
+    const banner = onlyAccepted
+      ? this._filterBanner('fa-handshake', 'ofertas aceptadas', offers.length, "ui._getPage('quotes').showWorkerSection('offers')")
+      : '';
+    const sorted = [...offers].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    return `${banner}<div class="quote-list">${sorted.map(o => {
       const status = o.estado || 'Enviada';
       return `<article class="quote-card">
         <div class="quote-card-head">
           <div class="quote-icon"><i class="fas fa-paper-plane"></i></div>
           <div class="quote-head-body">
-            <div class="quote-title">Oferta enviada ${quote ? `· ${escapeHtml(quote.service)}` : ''}</div>
+            <div class="quote-title">Oferta enviada</div>
             <div class="quote-sub">${timeAgo(o.createdAt)} · ${escapeHtml(o.tiempoEstimado || 'Tiempo a convenir')}</div>
           </div>
           ${this._statusPill(status, status === 'Aceptada' ? 'verified' : status === 'Rechazada' ? 'rejected' : 'pending')}
@@ -291,11 +326,53 @@ class QuotesPage extends BasePage {
 
   setTab(tab) {
     this.tab = tab;
+    this.filter = 'all';
+    this.offerFilter = 'all';
+    this._renderTabBody();
+  }
+
+  showClientSection(section) {
+    if (!this.isClient) return;
+    this.tab = section === 'direct' ? 'direct' : 'main';
+    this.filter = this.tab === 'main' ? section : 'all';
+    this._renderTabBody();
+    this._scrollToTabBody();
+    if (this.filter === 'offers') this._expandClientOffers();
+  }
+
+  showWorkerSection(section) {
+    if (!this.isWorker) return;
+    this.tab = section === 'nearby' ? 'main' : section === 'accepted' ? 'offers' : section;
+    this.offerFilter = section === 'accepted' ? 'accepted' : 'all';
+    this._renderTabBody();
+    this._scrollToTabBody();
+  }
+
+  _renderTabBody() {
     const body = document.getElementById('quotesTabBody');
     if (!body) return;
-    if (this.isClient) body.innerHTML = tab === 'direct' ? this._clientSuggestions() : this._clientQuotes();
-    else body.innerHTML = tab === 'offers' ? this._workerOffers() : tab === 'direct' ? this._workerSuggestions() : this._workerNearby(new Set(this.offers.map(o => o.cotizacionId)));
-    document.querySelectorAll('.tabs-bar .tab-btn').forEach(b => b.classList.toggle('active', b.getAttribute('onclick')?.includes(`'${tab}'`)));
+    if (this.isClient) body.innerHTML = this.tab === 'direct' ? this._clientSuggestions() : this._clientQuotes();
+    else body.innerHTML = this.tab === 'offers' ? this._workerOffers() : this.tab === 'direct' ? this._workerSuggestions() : this._workerNearby(new Set(this.offers.map(o => o.cotizacionId)));
+    document.querySelectorAll('.tabs-bar .tab-btn').forEach(b => b.classList.toggle('active', b.getAttribute('onclick')?.includes(`'${this.tab}'`)));
+    const activeKey = this.isClient
+      ? (this.tab === 'direct' ? 'direct' : this.filter)
+      : this.isWorker
+        ? (this.tab === 'direct' ? 'direct' : this.tab === 'offers' ? (this.offerFilter === 'accepted' ? 'accepted' : 'offers') : 'nearby')
+        : '';
+    this._syncStatCards(activeKey);
+  }
+
+  _scrollToTabBody() {
+    requestAnimationFrame(() => document.getElementById('quotesTabBody')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+  }
+
+  _expandClientOffers() {
+    requestAnimationFrame(() => {
+      document.querySelectorAll('#quotesTabBody .offers-box').forEach(box => {
+        box.classList.remove('hidden');
+        box.closest('.quote-card')?.querySelector('.quote-card-foot .btn')?.classList.add('open');
+      });
+    });
   }
 
   toggleOffers(quoteId, btn) {
