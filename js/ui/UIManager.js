@@ -93,7 +93,9 @@ class UIManager {
     document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
     el?.classList.add('active');
     const trade = document.getElementById('tradeField');
+    const trades = document.getElementById('regTradesGroup');
     if (trade) trade.style.display = role === 'trabajador' ? 'block' : 'none';
+    if (trades) trades.style.display = role === 'trabajador' ? 'block' : 'none';
     const experience = document.getElementById('regExperienceGroup');
     if (experience) experience.style.display = role === 'trabajador' ? 'block' : 'none';
     const doc = document.getElementById('regDocGroup');
@@ -127,6 +129,9 @@ class UIManager {
     const documentId = document.getElementById('regDoc')?.value.trim() || '';
     const zone = document.getElementById('regZone')?.value.trim();
     const trade = document.getElementById('regTrade')?.value || null;
+    // HU-19: el trabajador puede marcar oficios adicionales al registrarse.
+    const extraTrades = [...document.querySelectorAll('.reg-trade-check:checked')].map(c => c.value);
+    const trades = normalizeTrades([trade, ...extraTrades], trade);
     const experience = document.getElementById('regExperience')?.value || 0;
     const admin = adminByEmail(email);
     const role = admin ? 'admin' : (this._selectedRole === 'worker' ? 'trabajador' : this._selectedRole);
@@ -159,6 +164,7 @@ class UIManager {
         email, password: pass,
         zone: admin ? '' : zone,
         trade: admin ? '' : trade,
+        trades: admin ? [] : trades,
         experience: admin ? 0 : Number(experience) || 0,
         phone: admin ? '' : phone,
         document: admin ? '' : documentId,

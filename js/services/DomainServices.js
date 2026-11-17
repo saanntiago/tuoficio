@@ -16,7 +16,7 @@
 function profileChecklist(worker = {}, user = {}) {
   const items = [
     { key: 'nombre', label: 'Nombre completo', done: Boolean(worker.nombre || user.nombre) },
-    { key: 'oficio', label: 'Oficio principal', done: Boolean(worker.oficio || user.oficio) },
+    { key: 'oficio', label: 'Al menos un oficio', done: workerTrades(worker).length > 0 || Boolean(user.oficio) },
     { key: 'zona', label: 'Zona / localidad', done: Boolean(worker.zona || user.zona) },
     { key: 'descripcion', label: 'Descripción de tus servicios', done: Boolean(worker.descripcion) },
     { key: 'experiencia', label: 'Años de experiencia', done: Number(worker.experiencia) > 0 },
@@ -58,10 +58,13 @@ class WorkerService {
     const zone = worker.zona || user.zona || '';
     const z = zoneByName(zone);
     const ubicacion = worker.ubicacion || {};
+    const trades = normalizeTrades(worker.oficios, worker.oficio || user.oficio);
     return {
       ...worker,
       name: worker.nombre || user.nombre || 'Técnico',
-      trade: worker.oficio || user.oficio || 'Oficio',
+      trade: trades[0] || worker.oficio || user.oficio || 'Oficio',
+      trades,
+      oficios: trades,
       zone,
       stars: Number(worker.calificacionPromedio) || 0,
       reviewCount: Number(worker.totalResenas) || 0,
@@ -158,7 +161,7 @@ class WorkerService {
     onlyAvailable = false, query = '', radiusKm = 0, sort = 'relevance',
   } = {}) {
     let list = [...workers];
-    if (trade) list = list.filter(w => w.trade === trade);
+    if (trade) list = list.filter(w => workerHasTrade(w, trade));
     if (zone) {
       list = this.nearby(list, zone, radiusKm > 0 ? radiusKm : 60);
     } else if (radiusKm > 0) {
@@ -172,6 +175,7 @@ class WorkerService {
       list = list.filter(w =>
         (w.name || '').toLowerCase().includes(q) ||
         (w.trade || '').toLowerCase().includes(q) ||
+        (w.trades || []).join(' ').toLowerCase().includes(q) ||
         (w.zone || '').toLowerCase().includes(q) ||
         (w.habilidades || []).join(' ').toLowerCase().includes(q)
       );
@@ -200,13 +204,13 @@ class WorkerService {
   }
 
   recommendJobsForWorker(quotes, worker) {
-    const trade = worker.trade || worker.oficio || '';
+    const trades = workerTrades(worker);
     const zone = (worker.zone || worker.zona || '').toLowerCase();
     const coverage = (worker.coverage || []).map(z => String(z).toLowerCase());
     return quotes
       .filter(q => q.status === CHAMBAYA.QUOTE_STATUS.OPEN || q.estado === 'Activa')
       .filter(q => {
-        const sameTrade = !trade || q.service === trade;
+        const sameTrade = !trades.length || trades.includes(q.service);
         const qZone = String(q.zona || q.address || '').toLowerCase();
         const sameZone = !zone || qZone.includes(zone) || coverage.some(z => qZone.includes(z));
         return sameTrade && (sameZone || !zone);
@@ -216,12 +220,26 @@ class WorkerService {
 
   async updateProfile(uid, data) {
     const workerFields = [
-      'oficio', 'experiencia', 'descripcion', 'zona', 'zonasCobertura', 'ubicacion',
+      'oficio', 'oficios', 'experiencia', 'descripcion', 'zona', 'zonasCobertura', 'ubicacion',
       'horario', 'tarifas', 'telefono', 'whatsapp', 'contactoVisible', 'habilidades',
       'tipoHojaVida', 'nombre',
     ];
     const workerPayload = {};
     workerFields.forEach(k => { if (data[k] !== undefined) workerPayload[k] = data[k]; });
+    // HU-19: el primer oficio es el principal y se conserva para las vistas
+    // que todavía leen `oficio`; la lista completa vive en `oficios`.
+    if (data.oficios !== undefined || data.oficio !== undefined) {
+      const trades = normalizeTrades(data.oficios, data.oficio);
+      if (trades.length) {
+        workerPayload.oficios = trades;
+        workerPayload.oficio = trades[0];
+      } else {
+        // Un oficio libre (por ejemplo, escrito en el chatbot) se conserva
+        // como principal, pero no se inventa una lista fuera del catálogo.
+        delete workerPayload.oficios;
+        if (data.oficio !== undefined) workerPayload.oficio = data.oficio;
+      }
+    }
     if (data.zona) {
       const z = zoneByName(data.zona);
       if (z) workerPayload.ubicacion = { lat: z.lat, lng: z.lng };
@@ -233,9 +251,11 @@ class WorkerService {
       await this._db.set(this._db.COLLECTIONS.WORKERS, uid, workerPayload);
     }
     const userPayload = {};
-    ['nombre', 'zona', 'oficio', 'telefono', 'whatsapp', 'documento', 'preferencias'].forEach(k => {
+    ['nombre', 'zona', 'oficio', 'oficios', 'telefono', 'whatsapp', 'documento', 'preferencias'].forEach(k => {
       if (data[k] !== undefined) userPayload[k] = data[k];
     });
+    if (workerPayload.oficio) userPayload.oficio = workerPayload.oficio;
+    if (workerPayload.oficios) userPayload.oficios = workerPayload.oficios;
     if (data.zona) userPayload.zona = data.zona;
     if (Object.keys(userPayload).length) {
       await this._db.update(this._db.COLLECTIONS.USERS, uid, userPayload);
@@ -250,6 +270,7 @@ class WorkerService {
   async saveCv(uid, cv = {}) {
     await this.updateProfile(uid, {
       oficio: cv.oficio || '',
+      oficios: cv.oficios,
       experiencia: Number(cv.experiencia) || 0,
       zona: cv.zona || '',
       descripcion: cv.descripcion || '',

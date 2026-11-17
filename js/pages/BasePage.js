@@ -119,6 +119,8 @@ class BasePage {
   _workerCard(w) {
     const distance = (w.distanceKm != null && w.distanceKm < 90)
       ? `<span class="tag"><i class="fas fa-route"></i> ${w.distanceKm.toFixed(1)} km</span>` : '';
+    const trades = workerTrades(w);
+    const extraTrades = trades.slice(1, 3);
     return `<article class="worker-card" onclick="ui.viewWorker('${w.id}')">
       <div class="worker-card-header">
         ${this._avatar(w.name, w.avatarColor, 52, w.avatarUrl)}
@@ -134,6 +136,8 @@ class BasePage {
       <div class="worker-stars">${starsHtml(w.stars)}<span>${(w.stars || 0).toFixed(1)} (${w.reviewCount || 0} reseñas)</span></div>
       <div class="worker-tags">
         <span class="tag primary">${escapeHtml(w.trade)}</span>
+        ${extraTrades.map(t => `<span class="tag"><i class="fas ${tradeIcon(t)}"></i> ${escapeHtml(t)}</span>`).join('')}
+        ${trades.length > 3 ? `<span class="tag">+${trades.length - 3} oficios</span>` : ''}
         <span class="tag"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(w.zone || 'Sin zona')}</span>
         ${distance}
         <span class="tag"><span class="avail-dot ${availabilityClass(w.availability)}"></span>${escapeHtml(w.availability)}</span>

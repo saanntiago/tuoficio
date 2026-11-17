@@ -231,7 +231,7 @@ class WorkersPage extends BasePage {
       marker.bindPopup(`
         <div class="map-popup">
           <div class="map-popup-name">${escapeHtml(w.name)}</div>
-          <div class="map-popup-sub">${escapeHtml(w.trade)} · ${escapeHtml(w.zone)}</div>
+          <div class="map-popup-sub">${escapeHtml((w.trades || [w.trade]).join(' · '))} · ${escapeHtml(w.zone)}</div>
           <div class="map-popup-stars">${starsHtml(w.stars, 11)} ${(w.stars || 0).toFixed(1)}</div>
           <button class="map-popup-btn" onclick="ui.viewWorker('${w.id}')">Ver perfil</button>
         </div>`);
@@ -286,7 +286,7 @@ class WorkersPage extends BasePage {
               <h2>${escapeHtml(w.name)}</h2>
               ${w.badgeVerified ? '<span class="verified-badge"><i class="fas fa-check-circle"></i> Verificado</span>' : ''}
             </div>
-            <div class="profile-role"><i class="fas ${tradeIcon(w.trade)}"></i> ${escapeHtml(w.trade)} · ${w.experience || 0} años de experiencia</div>
+            <div class="profile-role"><i class="fas ${tradeIcon(w.trade)}"></i> ${escapeHtml((w.trades || [w.trade]).join(' · '))} · ${w.experience || 0} años de experiencia</div>
             <div class="profile-rating">${starsHtml(w.stars, 14)} <strong>${(w.stars || 0).toFixed(1)}</strong> <span>(${w.reviewCount || reviews.length} reseñas)</span></div>
             <div class="worker-tags">
               <span class="tag"><i class="fas fa-location-dot"></i> ${escapeHtml(w.zone || 'Sin zona')}</span>

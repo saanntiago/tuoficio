@@ -21,19 +21,32 @@ service cloud.firestore {
     function isActive() {
       return signedIn() && (!exists(userPath(request.auth.uid)) || myUser().activo != false);
     }
+    // HU-19: un trabajador puede ofrecer varios oficios del catálogo.
+    function validOficios() {
+      return !('oficios' in request.resource.data) ||
+        (request.resource.data.oficios is list &&
+         request.resource.data.oficios.size() > 0 &&
+         request.resource.data.oficios.size() <= 12 &&
+         request.resource.data.oficios.hasOnly([
+           'Plomería', 'Electricidad', 'Carpintería', 'Pintura',
+           'Jardinería', 'Cerrajería', 'Albañilería', 'Limpieza',
+           'Soldadura', 'Mecánica', 'Costura', 'Aire acondicionado'
+         ]));
+    }
     function safeUserFields() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-        'nombre', 'telefono', 'whatsapp', 'zona', 'oficio', 'foto',
+        'nombre', 'telefono', 'whatsapp', 'zona', 'oficio', 'oficios', 'foto',
         'documento', 'preferencias', 'avatarColor', 'googleAuth', 'rol', 'updatedAt'
       ]) &&
-      (!('rol' in request.resource.data) || request.resource.data.rol in ['cliente', 'trabajador']);
+      (!('rol' in request.resource.data) || request.resource.data.rol in ['cliente', 'trabajador']) &&
+      validOficios();
     }
     function workerProfileFields() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-        'nombre', 'oficio', 'experiencia', 'descripcion', 'zona', 'zonasCobertura',
+        'nombre', 'oficio', 'oficios', 'experiencia', 'descripcion', 'zona', 'zonasCobertura',
         'ubicacion', 'horario', 'tarifas', 'telefono', 'whatsapp', 'contactoVisible',
         'habilidades', 'tipoHojaVida', 'disponibilidad', 'portafolio', 'updatedAt'
-      ]);
+      ]) && validOficios();
     }
     function workerVerificationRequest() {
       return request.resource.data.diff(resource.data).affectedKeys()
@@ -97,7 +110,8 @@ service cloud.firestore {
         request.resource.data.badgeVerified == false &&
         request.resource.data.verificacionEstado == 'sin_solicitar' &&
         request.resource.data.calificacionPromedio == 0 &&
-        request.resource.data.totalResenas == 0;
+        request.resource.data.totalResenas == 0 &&
+        validOficios();
       // El propietario edita su perfil o pide revisión; no puede aprobarse la insignia.
       allow update: if isActive() && (
         isAdmin() ||

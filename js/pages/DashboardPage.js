@@ -123,14 +123,14 @@ class DashboardPage extends BasePage {
     ]);
     if (!this._alive) return;
 
-    const w = worker || { id: this.uid, name: this.user.name, trade: this.user.oficio, zone: this.user.zone, availability: 'Ocupado', stars: 0, reviewCount: 0, tarifas: {}, experiencia: 0, portafolio: [], habilidades: [] };
+    const w = worker || { id: this.uid, name: this.user.name, trade: this.user.oficio, trades: this.user.oficios || [], zone: this.user.zone, availability: 'Ocupado', stars: 0, reviewCount: 0, tarifas: {}, experiencia: 0, portafolio: [], habilidades: [] };
     const nearby = this._app.workers.recommendJobsForWorker(activeQuotes, w);
     const activeJobs = jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.ACTIVE);
     const doneJobs = jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.DONE);
     const pendingSuggestions = suggestions.filter(s => s.status === 'Enviada' || s.estado === 'Enviada');
     const status = w.verificationStatus || CHAMBAYA.VERIFICATION_STATUS.NONE;
     const completeness = this._app.workers.completeness(
-      { nombre: w.name, oficio: w.trade, zona: w.zone, descripcion: w.description, experiencia: w.experience, tarifas: w.tarifas, telefono: w.phone, habilidades: w.habilidades, portafolio: w.portafolio, horario: w.schedule },
+      { nombre: w.name, oficio: w.trade, oficios: w.trades, zona: w.zone, descripcion: w.description, experiencia: w.experience, tarifas: w.tarifas, telefono: w.phone, habilidades: w.habilidades, portafolio: w.portafolio, horario: w.schedule },
       this.user
     );
     const verificationBanner = w.badgeVerified
@@ -289,8 +289,10 @@ class DashboardPage extends BasePage {
     const counts = {};
     workerUsers.forEach(u => {
       const w = workers.find(x => x.id === u.id);
-      const trade = w?.trade || u.oficio || 'Otros';
-      counts[trade] = (counts[trade] || 0) + 1;
+      const trades = workerTrades(w || { oficio: u.oficio, oficios: u.oficios });
+      (trades.length ? trades : ['Otros']).forEach(trade => {
+        counts[trade] = (counts[trade] || 0) + 1;
+      });
     });
     const rows = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
     const max = Math.max(...rows.map(r => r[1]), 1);

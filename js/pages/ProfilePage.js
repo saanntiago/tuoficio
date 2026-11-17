@@ -89,10 +89,10 @@ class ProfilePage extends BasePage {
   _profileChecklist(w = {}) {
     const user = this.user || {};
     return this._app.workers.completeness({
-      nombre: w.name || user.name, oficio: w.trade || user.oficio, zona: w.zone || user.zone,
-      descripcion: w.description, experiencia: w.experience, tarifas: w.tarifas,
-      telefono: w.phone || user.telefono, habilidades: w.habilidades, portafolio: w.portafolio,
-      horario: w.schedule,
+      nombre: w.name || user.name, oficio: w.trade || user.oficio, oficios: w.trades || user.oficios,
+      zona: w.zone || user.zone, descripcion: w.description, experiencia: w.experience,
+      tarifas: w.tarifas, telefono: w.phone || user.telefono, habilidades: w.habilidades,
+      portafolio: w.portafolio, horario: w.schedule,
     }, user);
   }
 
@@ -104,6 +104,12 @@ class ProfilePage extends BasePage {
   _workerSections(w) {
     return `
       ${this._section('Presentación profesional', `
+        <div class="form-group"><label>Oficios que atiendes *</label>
+          <div class="check-grid">
+            ${CHAMBAYA.TRADES.map(t => `<label class="check-chip"><input type="checkbox" class="trade-check" value="${escapeHtml(t)}" ${workerTrades(w).includes(t) ? 'checked' : ''}/> ${escapeHtml(t)}</label>`).join('')}
+          </div>
+          <div class="field-hint">Puedes seleccionar varios oficios. El oficio principal del encabezado se usa para ordenar tu perfil y las recomendaciones.</div>
+        </div>
         <div class="form-row">
           <div class="form-group"><label>Años de experiencia</label><input class="form-input" id="pfExperience" type="number" min="0" max="60" value="${Number(w.experience) || 0}"></div>
           <div class="form-group"><label>Tipo de hoja de vida</label>
@@ -318,7 +324,12 @@ class ProfilePage extends BasePage {
         .split(',').map(s => s.trim()).filter(Boolean).slice(0, 12);
       const coverage = [...document.querySelectorAll('.coverage-check:checked')].map(c => c.value);
       const dias = [...document.querySelectorAll('.day-check:checked')].map(c => c.value);
-      payload.oficio = document.getElementById('pfTrade')?.value || '';
+      const primaryTrade = document.getElementById('pfTrade')?.value || '';
+      const selectedTrades = [...document.querySelectorAll('.trade-check:checked')].map(c => c.value);
+      const trades = normalizeTrades([primaryTrade, ...selectedTrades], primaryTrade);
+      if (!trades.length) return this._ui.showToast('Selecciona al menos un oficio.', 'error');
+      payload.oficio = trades[0];
+      payload.oficios = trades;
       payload.experiencia = Number(document.getElementById('pfExperience')?.value) || 0;
       payload.descripcion = document.getElementById('pfDescription')?.value.trim() || '';
       payload.habilidades = skills;
@@ -443,6 +454,7 @@ class ProfilePage extends BasePage {
       await this._app.verifications.request(this.uid, {
         nombre: this.user.name,
         oficio: this.worker?.trade || this.user.oficio || '',
+        oficios: this.worker?.trades || this.user.oficios || [],
         experiencia: this.worker?.experience || 0,
         tipoDocumento: document.getElementById('verDocType').value,
         numeroDocumento: number,

@@ -8,7 +8,7 @@
 const TuOficioSeed = (() => {
   const workers = [
     {
-      id: 'w-carlos', nombre: 'Carlos Ramírez', oficio: 'Electricidad', experiencia: 8,
+      id: 'w-carlos', nombre: 'Carlos Ramírez', oficio: 'Electricidad', oficios: ['Electricidad', 'Aire acondicionado'], experiencia: 8,
       descripcion: 'Instalaciones eléctricas residenciales, tableros, cortos y mantenimiento preventivo. Trabajo con materiales certificados y entrego garantía escrita.',
       zona: 'Chapinero', zonasCobertura: ['Chapinero', 'Teusaquillo', 'Barrios Unidos', 'Kennedy'],
       lat: 4.6486, lng: -74.0628, disponibilidad: 'Disponible',
@@ -24,7 +24,7 @@ const TuOficioSeed = (() => {
       ],
     },
     {
-      id: 'w-marta', nombre: 'Marta Gutiérrez', oficio: 'Pintura', experiencia: 6,
+      id: 'w-marta', nombre: 'Marta Gutiérrez', oficio: 'Pintura', oficios: ['Pintura', 'Limpieza'], experiencia: 6,
       descripcion: 'Pintura de interiores y acabados decorativos. Manejo de vinilos, esmaltes y estuco. Protejo muebles y pisos durante el trabajo.',
       zona: 'Suba', zonasCobertura: ['Suba', 'Usaquén'],
       lat: 4.7411, lng: -74.0839, disponibilidad: 'Disponible',
@@ -39,7 +39,7 @@ const TuOficioSeed = (() => {
       ],
     },
     {
-      id: 'w-julian', nombre: 'Julián Gómez', oficio: 'Carpintería', experiencia: 12,
+      id: 'w-julian', nombre: 'Julián Gómez', oficio: 'Carpintería', oficios: ['Carpintería', 'Pintura'], experiencia: 12,
       descripcion: 'Muebles a medida, closets, puertas y reparación de madera. Diseño según medidas del espacio, sin intermediarios.',
       zona: 'Teusaquillo', zonasCobertura: ['Teusaquillo', 'Chapinero', 'Puente Aranda'],
       lat: 4.6400, lng: -74.0900, disponibilidad: 'Medio tiempo',
@@ -67,7 +67,7 @@ const TuOficioSeed = (() => {
       portafolio: [],
     },
     {
-      id: 'w-andres', nombre: 'Andrés Molina', oficio: 'Plomería', experiencia: 10,
+      id: 'w-andres', nombre: 'Andrés Molina', oficio: 'Plomería', oficios: ['Plomería', 'Soldadura'], experiencia: 10,
       descripcion: 'Fugas, destapes, cambio de tubería y grifería. Atiendo emergencias en el mismo día dentro de mi zona de cobertura.',
       zona: 'Kennedy', zonasCobertura: ['Kennedy', 'Bosa', 'Fontibón'],
       lat: 4.6268, lng: -74.1537, disponibilidad: 'Disponible',
@@ -151,7 +151,7 @@ const TuOficioSeed = (() => {
   const users = [
     ...workers.map((w, i) => ({
       id: w.id, uid: w.id, nombre: w.nombre, email: `${w.id.replace('w-', '')}@demo.tuoficio.co`,
-      telefono: w.telefono, documento: `10${2000000 + i}`, rol: 'trabajador', zona: w.zona, oficio: w.oficio,
+      telefono: w.telefono, documento: `10${2000000 + i}`, rol: 'trabajador', zona: w.zona, oficio: w.oficio, oficios: w.oficios || [w.oficio],
       avatarColor: ['#3A3A38', '#6B5E45', '#6B736C', '#5A5A56'][i % 4],
       verificado: w.badgeVerified, activo: true, fechaRegistro: '2026-06-15T10:00:00.000Z',
       passHash: demoHash('demo1234'), demo: true,

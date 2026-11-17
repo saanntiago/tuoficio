@@ -29,10 +29,13 @@ const PublicData = (() => {
     const ubicacion = row.ubicacion || {};
     const lat = ubicacion.lat ?? row.lat ?? z?.lat ?? null;
     const lng = ubicacion.lng ?? row.lng ?? z?.lng ?? null;
+    const trades = normalizeTrades(row.oficios, row.oficio);
     return {
       id: row.id,
       name: row.nombre || 'Técnico de oficio',
-      trade: row.oficio || '',
+      trade: trades[0] || row.oficio || '',
+      trades,
+      oficios: trades,
       experience: Number(row.experiencia) || 0,
       description: row.descripcion || '',
       zone,
@@ -145,7 +148,7 @@ const PublicData = (() => {
         : null,
     }));
 
-    if (trade) rows = rows.filter(w => w.trade === trade);
+    if (trade) rows = rows.filter(w => workerHasTrade(w, trade));
 
     if (origin) {
       const radius = Number(radiusKm) || 0;
@@ -167,7 +170,7 @@ const PublicData = (() => {
     if (query) {
       const q = String(query).toLowerCase().trim();
       if (q) {
-        rows = rows.filter(w => [w.name, w.trade, w.zone, w.description, ...(w.skills || []), ...(w.coverage || [])]
+        rows = rows.filter(w => [w.name, w.trade, ...(w.trades || []), w.zone, w.description, ...(w.skills || []), ...(w.coverage || [])]
           .join(' ').toLowerCase().includes(q));
       }
     }
@@ -194,7 +197,7 @@ const PublicData = (() => {
       verified,
       available,
       totalReviews,
-      trades: [...new Set(list.map(w => w.trade).filter(Boolean))].length,
+      trades: [...new Set(list.flatMap(w => w.trades || [w.trade]).filter(Boolean))].length,
       zones: [...new Set(list.map(w => w.zone).filter(Boolean))].length,
     };
   }
@@ -290,7 +293,7 @@ const PublicUI = (() => {
         </div>
         <div class="pcard-body">
           <div class="pcard-name">${escapeHtml(w.name)}</div>
-          <div class="pcard-trade">${escapeHtml(w.trade)}${w.experience ? ` · ${w.experience} años` : ''}</div>
+          <div class="pcard-trade">${escapeHtml(w.trade)}${w.trades?.length > 1 ? ` <small>+${w.trades.length - 1} oficios</small>` : ''}${w.experience ? ` · ${w.experience} años` : ''}</div>
           ${stars(w.stars, w.reviewCount)}
           <div class="pcard-foot">
             <div class="pcard-price">${price}</div>

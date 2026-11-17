@@ -76,6 +76,7 @@ class AuthService {
       zone: data.zona || '',
       zona: data.zona || '',
       oficio: data.oficio || '',
+      oficios: normalizeTrades(data.oficios, data.oficio),
       avatarUrl: data.foto || data.avatarUrl || '',
       avatarColor: data.avatarColor || this._avatarColor(id),
       initials: this._initials(nombre),
@@ -157,19 +158,20 @@ class AuthService {
     return this.currentUser;
   }
 
-  async _localRegister({ name, email, password, zone, trade, role, phone = '', documentId = '', experience = 0 }) {
+  async _localRegister({ name, email, password, zone, trade, trades, role, phone = '', documentId = '', experience = 0 }) {
     if (this._findLocalUserByEmail(email)) throw new Error('Ese correo ya está registrado.');
     if (String(password || '').length < 6) throw new Error('La contraseña debe tener al menos 6 caracteres.');
+    const oficios = normalizeTrades(trades, trade);
     const id = `u-${Date.now().toString(36)}`;
     await this._db.set(CHAMBAYA.COLLECTIONS.USERS, id, {
       uid: id, nombre: name, email, telefono: phone, whatsapp: phone, documento: documentId,
-      rol: role || 'cliente', zona: zone || '', oficio: trade || '',
+      rol: role || 'cliente', zona: zone || '', oficio: oficios[0] || trade || '', oficios,
       avatarColor: this._avatarColor(id), verificado: Boolean(adminByEmail(email)),
       activo: true, passHash: demoHash(password), demo: true,
       fechaRegistro: new Date().toISOString(),
       preferencias: { contactoVisible: true, notificaciones: true },
     });
-    if (role === 'trabajador') await this._ensureWorkerDoc(id, { name, trade, zone, experience, phone });
+    if (role === 'trabajador') await this._ensureWorkerDoc(id, { name, trade, trades, zone, experience, phone });
     this._setLocalSession(id);
     this.currentUser = await this._localProfile(id);
     this._emitLocal();
@@ -235,8 +237,8 @@ class AuthService {
     }
   }
 
-  async register({ name, email, password, zone, trade, role, phone = '', document: documentId = '', experience = 0 }) {
-    if (this.mode === 'local') return this._localRegister({ name, email, password, zone, trade, role, phone, documentId, experience });
+  async register({ name, email, password, zone, trade, trades = [], role, phone = '', document: documentId = '', experience = 0 }) {
+    if (this.mode === 'local') return this._localRegister({ name, email, password, zone, trade, trades, role, phone, documentId, experience });
     try {
       const admin = adminByEmail(email);
       if (admin && password !== admin.password) throw new Error('Usa la clave de administrador asignada.');
@@ -249,6 +251,7 @@ class AuthService {
         role: finalRole,
         zone: admin ? '' : zone,
         trade: admin ? '' : trade,
+        trades: admin ? [] : trades,
         phone: admin ? '' : phone,
         document: admin ? '' : documentId,
         experience: admin ? 0 : Number(experience) || 0,
@@ -270,6 +273,7 @@ class AuthService {
         await this._db.set(CHAMBAYA.COLLECTIONS.USERS, id, {
           uid: id, nombre: 'Sofía Google', email: 'sofia.google@demo.tuoficio.co',
           rol: roleHint || 'cliente', zona: 'Chapinero', oficio: roleHint === 'trabajador' ? 'Electricidad' : '',
+          oficios: roleHint === 'trabajador' ? ['Electricidad'] : [],
           googleAuth: true, verificado: true, activo: true, demo: true, avatarColor: this._avatarColor(id),
           fechaRegistro: new Date().toISOString(),
         });
@@ -335,6 +339,7 @@ class AuthService {
       if (!uid) throw new Error('No hay sesión.');
       await this._db.update(CHAMBAYA.COLLECTIONS.USERS, uid, {
         rol: role, zona: extras.zone || '', oficio: extras.trade || '',
+        oficios: normalizeTrades(extras.trades, extras.trade),
       });
       if (role === 'trabajador') await this._ensureWorkerDoc(uid, extras);
       this.currentUser = await this._localProfile(uid);
@@ -345,10 +350,11 @@ class AuthService {
     if (!user) throw new Error('No hay sesión.');
     const existing = await this._db.get(this._db.COLLECTIONS.USERS, user.uid);
     if (!existing) {
-      await this._ensureUserDoc(user, { role, zone: extras.zone, trade: extras.trade });
+      await this._ensureUserDoc(user, { role, zone: extras.zone, trade: extras.trade, trades: extras.trades });
     } else {
       await this._db.update(this._db.COLLECTIONS.USERS, user.uid, {
         rol: role, zona: extras.zone || '', oficio: extras.trade || '',
+        oficios: normalizeTrades(extras.trades, extras.trade),
       });
       if (role === 'trabajador') await this._ensureWorkerDoc(user.uid, extras);
     }
@@ -454,6 +460,7 @@ class AuthService {
       rol: role,
       zona: extras.zone || '',
       oficio: extras.trade || '',
+      oficios: normalizeTrades(extras.trades, extras.trade),
       telefono: extras.phone || '',
       whatsapp: extras.phone || '',
       documento: extras.document || '',
@@ -482,6 +489,7 @@ class AuthService {
       rol: 'trabajador',
       nombre: extras.name || userDoc?.nombre || '',
       oficio: extras.trade || '',
+      oficios: normalizeTrades(extras.trades, extras.trade),
       experiencia: Number(extras.experience) || 0,
       descripcion: '',
       tipoHojaVida: extras.cvType || '',

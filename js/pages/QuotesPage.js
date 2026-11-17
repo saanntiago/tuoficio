@@ -28,10 +28,10 @@ class QuotesPage extends BasePage {
         this.offersByQuote = Object.fromEntries(this.quotes.map((q, i) => [q.id, offerLists[i]]));
         this.suggestions = await this._app.quotes.getSuggestionsByClient(this.uid);
       } else if (this.isWorker) {
-        this.quotes = this._app.workers.recommendJobsForWorker(await this._app.quotes.getActive(), {
-          trade: this.user.oficio, zone: this.user.zone,
-          coverage: (this.workerById[this.uid]?.coverage || []),
-        });
+        const me = this.workerById[this.uid] || {
+          trade: this.user.oficio, zone: this.user.zone, coverage: [],
+        };
+        this.quotes = this._app.workers.recommendJobsForWorker(await this._app.quotes.getActive(), me);
         this.offers = await this._app.quotes.getOffersByWorker(this.uid);
         this.suggestions = await this._app.quotes.getSuggestionsForWorker(this.uid);
       } else {
@@ -445,7 +445,7 @@ class QuotesPage extends BasePage {
         urgencia: document.getElementById('qUrgency').value,
         duracionEstimada: document.getElementById('qDuration').value.trim(),
       });
-      const matches = this.workers.filter(w => w.trade === service && w.active !== false).slice(0, 12);
+      const matches = this.workers.filter(w => workerHasTrade(w, service) && w.active !== false).slice(0, 12);
       await Promise.all(matches.map(w => this._app.notif.notify({
         usuarioId: w.id,
         title: 'Nueva solicitud cerca',

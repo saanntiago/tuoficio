@@ -109,8 +109,13 @@
             <select class="form-input" id="regZone"></select>
           </div>
           <div class="form-group" id="tradeField">
-            <label>Oficio</label>
+            <label>Oficio principal</label>
             <select class="form-input" id="regTrade"></select>
+          </div>
+          <div class="form-group" id="regTradesGroup">
+            <label>Otros oficios que atiendes (opcional)</label>
+            <div class="check-grid" id="regTrades"></div>
+            <div class="field-hint">Marca todos los oficios que puedes atender. El oficio principal encabeza tu perfil y las recomendaciones.</div>
           </div>
           <div class="form-group" id="regExperienceGroup">
             <label>Años de experiencia</label>
@@ -183,33 +188,35 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <script src="js/config/constants.js?v=20261116-2"></script>
-  <script src="js/data/seed.js?v=20261027-6"></script>
+  <script src="js/config/constants.js?v=20261116-3"></script>
+  <script src="js/data/seed.js?v=20261116-3"></script>
   <script src="js/services/LocalStore.js?v=20261027-6"></script>
   <script src="js/config/firebase-config.js?v=20261027-6"></script>
   <script src="js/services/DatabaseService.js?v=20261027-6"></script>
   <script src="js/services/StorageService.js?v=20261027-6"></script>
-  <script src="js/services/AuthService.js?v=20261027-6"></script>
-  <script src="js/services/DomainServices.js?v=20261116-2"></script>
+  <script src="js/services/AuthService.js?v=20261116-3"></script>
+  <script src="js/services/DomainServices.js?v=20261116-3"></script>
   <script src="js/chatbot/Chatbot.js?v=20261027-6"></script>
-  <script src="js/pages/BasePage.js?v=20261027-6"></script>
-  <script src="js/pages/DashboardPage.js?v=20261027-6"></script>
-  <script src="js/pages/WorkersPage.js?v=20261116-2"></script>
-  <script src="js/pages/ProfilePage.js?v=20261027-6"></script>
+  <script src="js/pages/BasePage.js?v=20261116-3"></script>
+  <script src="js/pages/DashboardPage.js?v=20261116-3"></script>
+  <script src="js/pages/WorkersPage.js?v=20261116-3"></script>
+  <script src="js/pages/ProfilePage.js?v=20261116-3"></script>
   <script src="js/pages/PortfolioPage.js?v=20261116-1"></script>
   <script src="js/pages/AvailabilityPage.js?v=20261027-6"></script>
-  <script src="js/pages/QuotesPage.js?v=20261116-2"></script>
+  <script src="js/pages/QuotesPage.js?v=20261116-3"></script>
   <script src="js/pages/JobsPage.js?v=20261027-6"></script>
   <script src="js/pages/CommunityPages.js?v=20261027-6"></script>
   <script src="js/pages/AdminPages.js?v=20261027-6"></script>
-  <script src="js/ui/UIManager.js?v=20261027-6"></script>
+  <script src="js/ui/UIManager.js?v=20261116-3"></script>
   <script src="js/core/App.js?v=20261027-6"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const zone = document.getElementById('regZone');
       const trade = document.getElementById('regTrade');
+      const trades = document.getElementById('regTrades');
       if (zone) zone.innerHTML = CHAMBAYA.ZONES.map(z => `<option value="${z.name}">${z.name}</option>`).join('');
       if (trade) trade.innerHTML = CHAMBAYA.TRADES.map(t => `<option>${t}</option>`).join('');
+      if (trades) trades.innerHTML = CHAMBAYA.TRADES.map(t => `<label class="check-chip"><input type="checkbox" class="reg-trade-check" value="${t}"/> ${t}</label>`).join('');
     });
   </script>
 </body>

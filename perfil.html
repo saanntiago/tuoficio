@@ -71,12 +71,12 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="js/config/constants.js?v=20261116-1"></script>
-    <script src="js/data/seed.js"></script>
+    <script src="js/config/constants.js?v=20261116-3"></script>
+    <script src="js/data/seed.js?v=20261116-3"></script>
     <script src="js/services/LocalStore.js"></script>
     <script src="js/config/firebase-config.js?v=20261027-1"></script>
     <script src="js/services/DatabaseService.js"></script>
-    <script src="js/public.js?v=20261116-1"></script>
+    <script src="js/public.js?v=20261116-3"></script>
     <script>
       const ProfilePage = (() => {
         let worker = null;
@@ -200,7 +200,7 @@
                 <div class="profile-breadcrumb">
                   <a href="index.html">Inicio</a><i class="fa-solid fa-chevron-right" style="font-size:8px"></i>
                   <a href="buscar.html">Técnicos</a><i class="fa-solid fa-chevron-right" style="font-size:8px"></i>
-                  <span>${escapeHtml(worker.trade)} en ${escapeHtml(worker.zone || 'Bogotá')}</span>
+                  <span>${escapeHtml((worker.trades || [worker.trade]).join(' · '))} en ${escapeHtml(worker.zone || 'Bogotá')}</span>
                 </div>
                 <div class="profile-head">
                   ${PublicUI.avatar(worker, 108)}
@@ -211,7 +211,7 @@
                         ? '<span class="verified-pill"><i class="fa-solid fa-shield-halved"></i> Verificado</span>'
                         : ''}
                     </div>
-                    <div class="profile-trade"><i class="fa-solid ${tradeIcon(worker.trade)}"></i>${escapeHtml(worker.trade)}${worker.experience ? ` · ${worker.experience} años de experiencia` : ''}</div>
+                    <div class="profile-trade"><i class="fa-solid ${tradeIcon(worker.trade)}"></i>${escapeHtml((worker.trades || [worker.trade]).join(' · '))}${worker.experience ? ` · ${worker.experience} años de experiencia` : ''}</div>
                     <div class="profile-meta">
                       ${PublicUI.stars(rating.stars, rating.count, 12)}
                       <span class="pm-chip"><i class="fa-solid fa-location-dot"></i>${escapeHtml(worker.zone || 'Bogotá')}</span>
@@ -295,9 +295,9 @@
               </aside>
             </div>`;
 
-          document.title = `${worker.name} · ${worker.trade} – TuOficioCol`;
+          document.title = `${worker.name} · ${(worker.trades || [worker.trade]).join(' / ')} – TuOficioCol`;
           const meta = document.querySelector('meta[name="description"]');
-          if (meta) meta.setAttribute('content', `${worker.name}, ${worker.trade} en ${worker.zone || 'Bogotá'}. ${rating.count} reseñas, tarifas desde ${worker.visitFee > 0 ? formatMoney(worker.visitFee) : 'sin costo de visita'}.`);
+          if (meta) meta.setAttribute('content', `${worker.name}, ${(worker.trades || [worker.trade]).join(', ')} en ${worker.zone || 'Bogotá'}. ${rating.count} reseñas, tarifas desde ${worker.visitFee > 0 ? formatMoney(worker.visitFee) : 'sin costo de visita'}.`);
 
           initMap();
           PublicUI.reveal();
@@ -317,7 +317,7 @@
           }).addTo(map);
           L.circleMarker([worker.lat, worker.lng], {
             radius: 10, color: '#fff', weight: 3, fillColor: '#3E6B4F', fillOpacity: 1,
-          }).addTo(map).bindPopup(`<strong>${escapeHtml(worker.name)}</strong><br>${escapeHtml(worker.trade)}`);
+          }).addTo(map).bindPopup(`<strong>${escapeHtml(worker.name)}</strong><br>${escapeHtml((worker.trades || [worker.trade]).join(' · '))}`);
           (worker.coverage || []).forEach(name => {
             const z = zoneByName(name);
             if (!z || (Math.abs(z.lat - worker.lat) < 0.01 && Math.abs(z.lng - worker.lng) < 0.01)) return;

@@ -178,6 +178,34 @@ function isMediaUrl(value, kind = 'image') {
 }
 
 /**
+ * HU-19: normaliza la lista de oficios de un trabajador. Mantiene el oficio
+ * principal de primero y descarta valores repetidos o fuera del catálogo.
+ */
+function normalizeTrades(oficios, oficio) {
+  const source = Array.isArray(oficios) ? oficios : [];
+  const list = source
+    .map(value => String(value || '').trim())
+    .filter(value => CHAMBAYA.TRADES.includes(value));
+  const primary = String(oficio || '').trim();
+  const ordered = [
+    ...(CHAMBAYA.TRADES.includes(primary) ? [primary] : []),
+    ...list,
+  ];
+  return [...new Set(ordered)];
+}
+
+/** Devuelve todos los oficios de una ficha cruda o mapeada. */
+function workerTrades(worker = {}) {
+  return normalizeTrades(worker.oficios || worker.trades, worker.oficio || worker.trade);
+}
+
+/** Indica si el trabajador atiende un oficio (principal o secundario). */
+function workerHasTrade(worker = {}, trade = '') {
+  if (!trade) return true;
+  return workerTrades(worker).includes(trade);
+}
+
+/**
  * Convierte la fecha (YYYY-MM-DD) y la hora (HH:mm) de una solicitud en un
  * Date local. Devuelve null si falta algún dato o no es válido.
  */
