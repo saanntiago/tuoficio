@@ -11,6 +11,9 @@ class JobsPage extends BasePage {
     this.tab = 'active';
     this.reviewsByJob = {};
     this.workerNames = {};
+    // HU-20: filtros del historial (finalizados, calificados, cancelados y todos).
+    this.historyFilter = { desde: '', hasta: '', sort: 'recent' };
+    this.historyError = '';
   }
 
   async render(container) {
@@ -73,11 +76,17 @@ class JobsPage extends BasePage {
         <button class="tab-btn ${this.tab === 'cancelled' ? 'active' : ''}" onclick="ui._getPage('jobs').setTab('cancelled')">Cancelados</button>
         <button class="tab-btn ${this.tab === 'all' ? 'active' : ''}" onclick="ui._getPage('jobs').setTab('all')">Todos</button>
       </div>
+      <div id="jobsHistoryFilters">${this._isHistoryTab() ? this._historyControls() : ''}</div>
       <div id="jobsTabBody">${this._renderJobs(filtered)}</div>`;
   }
 
   _renderJobs(list) {
     if (!list.length) {
+      if (this._isHistoryTab() && (this.historyFilter.desde || this.historyFilter.hasta) && !this.historyError) {
+        return this._empty('fa-calendar-xmark', 'No hay trabajos en ese rango de fechas',
+          'Ajusta las fechas o limpia el filtro para ver todo el historial.',
+          '<button class="btn btn-secondary" onclick="ui._getPage(\'jobs\').clearHistoryFilter()"><i class="fas fa-rotate-left"></i> Limpiar filtro</button>');
+      }
       const msg = this.tab === 'active' ? 'No tienes trabajos en curso.'
         : this.tab === 'done' ? 'Aún no hay trabajos finalizados.'
           : this.tab === 'reviewed' ? 'Aún no has calificado ningún servicio.'
@@ -104,17 +113,123 @@ class JobsPage extends BasePage {
   }
 
   _jobsForTab(tab) {
-    if (tab === 'active') return this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.ACTIVE);
-    if (tab === 'done') return this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.DONE);
-    if (tab === 'reviewed') return this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.DONE && (this.reviewsByJob[j.id] || j.resenaId));
-    if (tab === 'cancelled') return this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.CANCELLED);
-    return this.jobs;
+    let list;
+    if (tab === 'active') list = this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.ACTIVE);
+    else if (tab === 'done') list = this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.DONE);
+    else if (tab === 'reviewed') list = this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.DONE && (this.reviewsByJob[j.id] || j.resenaId));
+    else if (tab === 'cancelled') list = this.jobs.filter(j => j.estado === CHAMBAYA.JOB_STATUS.CANCELLED);
+    else list = [...this.jobs];
+    // HU-20: el historial se filtra por rango de fechas y se ordena.
+    if (this._isHistoryTab(tab)) list = this._sortJobs(this._historyRange(list));
+    return list;
+  }
+
+  _isHistoryTab(tab = this.tab) {
+    return ['done', 'reviewed', 'cancelled', 'all'].includes(tab);
+  }
+
+  /** Fecha efectiva del trabajo para el filtro del historial. */
+  _jobDate(job = {}) {
+    const value = job.fecha || job.finalizadoEn || job.createdAt || '';
+    if (value && typeof value.toDate === 'function') return value.toDate().toISOString().slice(0, 10);
+    return String(value).slice(0, 10);
+  }
+
+  _historyRange(list) {
+    // Si el rango es inválido (desde > hasta) no se aplica: se muestra el error.
+    if (this.historyError) return list;
+    const { desde, hasta } = this.historyFilter;
+    if (!desde && !hasta) return list;
+    return list.filter(job => {
+      const date = this._jobDate(job);
+      if (!date) return false;
+      if (desde && date < desde) return false;
+      if (hasta && date > hasta) return false;
+      return true;
+    });
+  }
+
+  _sortJobs(list) {
+    const sort = this.historyFilter.sort || 'recent';
+    const rows = [...list];
+    const budget = job => Number(job.presupuesto) || 0;
+    if (sort === 'oldest') rows.sort((a, b) => this._jobDate(a).localeCompare(this._jobDate(b)));
+    else if (sort === 'budget-desc') rows.sort((a, b) => budget(b) - budget(a));
+    else if (sort === 'budget-asc') rows.sort((a, b) => budget(a) - budget(b));
+    else rows.sort((a, b) => this._jobDate(b).localeCompare(this._jobDate(a)));
+    return rows;
+  }
+
+  _historyControls() {
+    const { desde, hasta, sort } = this.historyFilter;
+    return `
+      <div class="history-filters">
+        <div class="history-filter-field">
+          <label for="jobsFrom">Desde</label>
+          <input class="form-input" id="jobsFrom" type="date" value="${escapeHtml(desde)}"
+            onchange="ui._getPage('jobs').setHistoryFilter('desde', this.value)">
+        </div>
+        <div class="history-filter-field">
+          <label for="jobsTo">Hasta</label>
+          <input class="form-input" id="jobsTo" type="date" value="${escapeHtml(hasta)}"
+            onchange="ui._getPage('jobs').setHistoryFilter('hasta', this.value)">
+        </div>
+        <div class="history-filter-field">
+          <label for="jobsSort">Ordenar por</label>
+          <select class="form-input" id="jobsSort" onchange="ui._getPage('jobs').setHistoryFilter('sort', this.value)">
+            <option value="recent" ${sort === 'recent' ? 'selected' : ''}>Fecha: más reciente</option>
+            <option value="oldest" ${sort === 'oldest' ? 'selected' : ''}>Fecha: más antigua</option>
+            <option value="budget-desc" ${sort === 'budget-desc' ? 'selected' : ''}>Presupuesto: mayor primero</option>
+            <option value="budget-asc" ${sort === 'budget-asc' ? 'selected' : ''}>Presupuesto: menor primero</option>
+          </select>
+        </div>
+        <button class="btn btn-secondary btn-sm history-clear" onclick="ui._getPage('jobs').clearHistoryFilter()">
+          <i class="fas fa-rotate-left"></i> Limpiar
+        </button>
+      </div>
+      <div class="form-error" id="jobsHistoryError" style="display:${this.historyError ? 'block' : 'none'}">${escapeHtml(this.historyError)}</div>`;
+  }
+
+  setHistoryFilter(field, value) {
+    const next = { ...this.historyFilter, [field]: value || '' };
+    this.historyFilter = next;
+    this.historyError = (next.desde && next.hasta && next.desde > next.hasta)
+      ? 'La fecha "Desde" no puede ser posterior a la fecha "Hasta".'
+      : '';
+    this._renderTabBody();
+    this._syncHistoryError();
+  }
+
+  clearHistoryFilter() {
+    this.historyFilter = { desde: '', hasta: '', sort: 'recent' };
+    this.historyError = '';
+    const from = document.getElementById('jobsFrom');
+    const to = document.getElementById('jobsTo');
+    const sort = document.getElementById('jobsSort');
+    if (from) from.value = '';
+    if (to) to.value = '';
+    if (sort) sort.value = 'recent';
+    this._renderTabBody();
+    this._syncHistoryError();
+  }
+
+  _syncHistoryError() {
+    const box = document.getElementById('jobsHistoryError');
+    if (!box) return;
+    box.textContent = this.historyError;
+    box.style.display = this.historyError ? 'block' : 'none';
+  }
+
+  _renderTabBody() {
+    const body = document.getElementById('jobsTabBody');
+    if (body) body.innerHTML = this._renderJobs(this._jobsForTab(this.tab));
   }
 
   setTab(tab, scroll = false) {
     this.tab = tab;
-    const body = document.getElementById('jobsTabBody');
-    if (body) body.innerHTML = this._renderJobs(this._jobsForTab(tab));
+    this._renderTabBody();
+    const history = document.getElementById('jobsHistoryFilters');
+    if (history) history.innerHTML = this._isHistoryTab() ? this._historyControls() : '';
     document.querySelectorAll('.tabs-bar .tab-btn').forEach(b => b.classList.toggle('active', b.getAttribute('onclick')?.includes(`'${tab}'`)));
     this._syncStatCards(tab);
     if (scroll) {

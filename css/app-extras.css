@@ -103,6 +103,21 @@
 .list-filter-bar > span { display: flex; align-items: center; gap: 7px; }
 .list-filter-bar > span > i { color: var(--primary); }
 
+/* HU-20: filtros y orden del historial de trabajos. */
+.history-filters {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px;
+  padding: 12px 14px; margin-bottom: 14px; border-radius: var(--radius-sm);
+  background: rgba(78,122,92,.05); border: 1px solid rgba(78,122,92,.16);
+}
+.history-filter-field { display: flex; flex-direction: column; gap: 4px; min-width: 140px; }
+.history-filter-field label { font-size: 10.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--text3); }
+.history-filter-field .form-input { margin: 0; min-height: 38px; }
+.history-clear { margin-left: auto; }
+@media (max-width: 640px) {
+  .history-filter-field { flex: 1 1 140px; }
+  .history-clear { margin-left: 0; width: 100%; justify-content: center; }
+}
+
 .dashboard-hero {
   background: linear-gradient(120deg, #FFFFFF 0%, #F1F3EC 60%, #E7EDE4 100%);
   border: 1px solid var(--border); border-radius: 20px; padding: 26px 28px;
