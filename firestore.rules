@@ -67,7 +67,7 @@ service cloud.firestore {
         data.hora is string && data.hora != '' &&
         data.address is string && data.address != '' &&
         data.budget is number && data.budget > 0 &&
-        data.service is string && data.service != '' &&
+        data['service'] is string && data['service'] != '' &&
         data.description is string && data.description != '';
     }
 
@@ -260,6 +260,13 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if signedIn() && request.auth.uid == request.resource.data.from;
       allow update, delete: if false;
+    }
+
+    /* ── Códigos OTP (HU-21) ──────────────────────────────────
+     * Solo las Cloud Functions (Admin SDK) pueden leer o escribir estos
+     * documentos. El cliente nunca ve el código ni su hash. */
+    match /otp_resets/{id} {
+      allow read, write: if false;
     }
   }
 }

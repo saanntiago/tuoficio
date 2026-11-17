@@ -128,13 +128,39 @@
         </form>
 
         <form id="forgotForm" style="display:none" onsubmit="event.preventDefault(); ui.doForgotPassword();">
-          <div class="form-group">
-            <label>Correo de recuperación</label>
-            <input class="form-input" id="forgotEmail" type="email" required>
+          <div id="forgotStep1">
+            <div class="form-group">
+              <label>Correo de recuperación</label>
+              <input class="form-input" id="forgotEmail" type="email" required>
+            </div>
+            <p class="terms-text">Te enviaremos un código de 6 dígitos al correo registrado. El código vence en 15 minutos.</p>
+            <p id="forgotMsg" class="terms-text" style="display:none"></p>
+            <button class="btn btn-primary btn-full" id="forgotBtn" type="submit">Enviar código</button>
+            <p class="terms-text"><a class="link" onclick="ui.switchTab('login')">Volver</a></p>
           </div>
-          <p id="forgotMsg" class="terms-text" style="display:none;color:#059669"></p>
-          <button class="btn btn-primary btn-full" type="submit">Enviar enlace</button>
-          <p class="terms-text"><a class="link" onclick="ui.switchTab('login')">Volver</a></p>
+
+          <div id="forgotStep2" style="display:none">
+            <p class="terms-text" id="forgotSentMsg"></p>
+            <p id="otpDemo" class="terms-text" style="display:none;color:#059669"></p>
+            <div class="form-group">
+              <label>Código de 6 dígitos</label>
+              <input class="form-input" id="otpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" placeholder="000000">
+            </div>
+            <div class="form-group">
+              <label>Nueva contraseña</label>
+              <input class="form-input" id="otpPass" type="password" minlength="6" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+              <label>Confirmar contraseña</label>
+              <input class="form-input" id="otpPass2" type="password" minlength="6" autocomplete="new-password">
+            </div>
+            <div class="form-error" id="otpError" style="display:none"></div>
+            <button class="btn btn-primary btn-full" id="otpBtn" type="button" onclick="ui.doResetPassword()">Restablecer contraseña</button>
+            <p class="terms-text">
+              <a class="link" onclick="ui.resendOtp()">Reenviar código</a> ·
+              <a class="link" onclick="ui.switchTab('login')">Volver</a>
+            </p>
+          </div>
         </form>
 
         <div id="demoPanel" class="demo-panel">
@@ -186,15 +212,16 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-functions-compat.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script src="js/config/constants.js?v=20261116-3"></script>
   <script src="js/data/seed.js?v=20261116-3"></script>
   <script src="js/services/LocalStore.js?v=20261027-6"></script>
-  <script src="js/config/firebase-config.js?v=20261027-6"></script>
+  <script src="js/config/firebase-config.js?v=20261116-5"></script>
   <script src="js/services/DatabaseService.js?v=20261027-6"></script>
   <script src="js/services/StorageService.js?v=20261027-6"></script>
-  <script src="js/services/AuthService.js?v=20261116-3"></script>
+  <script src="js/services/AuthService.js?v=20261116-5"></script>
   <script src="js/services/DomainServices.js?v=20261116-3"></script>
   <script src="js/chatbot/Chatbot.js?v=20261027-6"></script>
   <script src="js/pages/BasePage.js?v=20261116-3"></script>
@@ -207,8 +234,8 @@
   <script src="js/pages/JobsPage.js?v=20261116-4"></script>
   <script src="js/pages/CommunityPages.js?v=20261027-6"></script>
   <script src="js/pages/AdminPages.js?v=20261027-6"></script>
-  <script src="js/ui/UIManager.js?v=20261116-3"></script>
-  <script src="js/core/App.js?v=20261027-6"></script>
+  <script src="js/ui/UIManager.js?v=20261116-5"></script>
+  <script src="js/core/App.js?v=20261116-5"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const zone = document.getElementById('regZone');

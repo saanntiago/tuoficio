@@ -73,6 +73,8 @@ class App {
   loginWithGoogle(role) { return this.auth.loginWithGoogle(role); }
   completeRole(role, extras) { return this.auth.completeRole(role, extras); }
   sendPasswordReset(email) { return this.auth.sendPasswordReset(email); }
+  requestPasswordOtp(email) { return this.auth.requestPasswordOtp(email); }
+  resetPasswordWithOtp(email, code, newPassword) { return this.auth.resetPasswordWithOtp(email, code, newPassword); }
   logout() { return this.auth.logout(); }
 
   get user() {

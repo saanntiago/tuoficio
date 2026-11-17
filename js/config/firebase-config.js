@@ -77,11 +77,16 @@ function initFirebase() {
     window.ChambaStorage = firebase.storage();
   }
 
+  if (typeof firebase.functions === 'function') {
+    window.ChambaFunctions = firebase.app().functions('us-central1');
+  }
+
   if (emulator && !window.ChambaEmulatorConfigured) {
     // Puertos por defecto de Firebase Emulator Suite.
     db.useEmulator('127.0.0.1', 8080);
     if (window.ChambaAuth) window.ChambaAuth.useEmulator('http://127.0.0.1:9099');
     if (window.ChambaStorage) window.ChambaStorage.useEmulator('127.0.0.1', 9199);
+    if (window.ChambaFunctions) window.ChambaFunctions.useEmulator('127.0.0.1', 5001);
     window.ChambaEmulatorConfigured = true;
   }
 

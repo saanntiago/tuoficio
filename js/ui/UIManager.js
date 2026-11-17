@@ -72,6 +72,7 @@ class UIManager {
     document.querySelectorAll('.auth-tab').forEach(t =>
       t.classList.toggle('active', t.dataset.tab === tab)
     );
+    this._resetForgotFlow();
     const login = document.getElementById('loginForm');
     const register = document.getElementById('registerForm');
     const forgot = document.getElementById('forgotForm');
@@ -82,6 +83,7 @@ class UIManager {
   }
 
   showForgotPassword() {
+    this._resetForgotFlow();
     document.getElementById('loginForm').style.display = 'none';
     document.getElementById('registerForm').style.display = 'none';
     document.getElementById('forgotForm').style.display = 'block';
@@ -252,19 +254,104 @@ class UIManager {
     }
   }
 
+  _resetForgotFlow() {
+    const step1 = document.getElementById('forgotStep1');
+    const step2 = document.getElementById('forgotStep2');
+    if (step1) step1.style.display = 'block';
+    if (step2) step2.style.display = 'none';
+    ['otpCode', 'otpPass', 'otpPass2'].forEach(id => {
+      const input = document.getElementById(id);
+      if (input) input.value = '';
+    });
+    const demo = document.getElementById('otpDemo');
+    if (demo) { demo.style.display = 'none'; demo.textContent = ''; }
+    const error = document.getElementById('otpError');
+    if (error) { error.style.display = 'none'; error.textContent = ''; }
+    const msg = document.getElementById('forgotMsg');
+    if (msg) { msg.style.display = 'none'; msg.textContent = ''; msg.style.color = ''; }
+    this._resetEmail = null;
+  }
+
   async doForgotPassword() {
     const email = document.getElementById('forgotEmail').value.trim();
+    const msg = document.getElementById('forgotMsg');
     if (!email) return;
+    this._setLoading('forgotBtn', true, 'Enviando...');
     try {
-      await this._app.sendPasswordReset(email);
-      const msg = document.getElementById('forgotMsg');
-      msg.style.display = 'block';
-      msg.textContent = `Enviamos el enlace de recuperación a ${email}.`;
+      const result = await this._app.requestPasswordOtp(email);
+      if (result.fallback === 'email-link') {
+        if (msg) {
+          msg.style.display = 'block';
+          msg.style.color = '#B8914A';
+          msg.textContent = 'El envío de códigos no está disponible en este entorno. Te enviamos un enlace de recuperación al correo.';
+        }
+        return;
+      }
+      this._resetEmail = email;
+      const step1 = document.getElementById('forgotStep1');
+      const step2 = document.getElementById('forgotStep2');
+      if (step1) step1.style.display = 'none';
+      if (step2) step2.style.display = 'block';
+      const sent = document.getElementById('forgotSentMsg');
+      if (sent) sent.textContent = `Enviamos un código de 6 dígitos a ${email}. Vence en 15 minutos.`;
+      const demo = document.getElementById('otpDemo');
+      if (demo && result.demoCode) {
+        demo.style.display = 'block';
+        demo.textContent = `Modo demostración: el código es ${result.demoCode}.`;
+      }
+      document.getElementById('otpCode')?.focus();
     } catch (err) {
-      const msg = document.getElementById('forgotMsg');
-      msg.style.display = 'block';
-      msg.style.color = '#A85B46';
-      msg.textContent = err.message;
+      if (msg) {
+        msg.style.display = 'block';
+        msg.style.color = '#A85B46';
+        msg.textContent = err.message;
+      }
+    } finally {
+      this._setLoading('forgotBtn', false, 'Enviar código');
+    }
+  }
+
+  async resendOtp() {
+    const email = this._resetEmail || document.getElementById('forgotEmail').value.trim();
+    const error = document.getElementById('otpError');
+    try {
+      const result = await this._app.requestPasswordOtp(email);
+      const demo = document.getElementById('otpDemo');
+      if (demo && result.demoCode) {
+        demo.style.display = 'block';
+        demo.textContent = `Modo demostración: el nuevo código es ${result.demoCode}.`;
+      }
+      if (error) { error.style.display = 'none'; error.textContent = ''; }
+      this.showToast('Enviamos un código nuevo.', 'success');
+    } catch (err) {
+      if (error) { error.textContent = err.message; error.style.display = 'block'; }
+    }
+  }
+
+  async doResetPassword() {
+    const email = this._resetEmail || document.getElementById('forgotEmail').value.trim();
+    const code = document.getElementById('otpCode').value.trim();
+    const pass = document.getElementById('otpPass').value;
+    const confirm = document.getElementById('otpPass2').value;
+    const error = document.getElementById('otpError');
+    const fail = message => {
+      if (error) { error.textContent = message; error.style.display = 'block'; }
+    };
+    if (!/^\d{6}$/.test(code)) return fail('Escribe el código de 6 dígitos.');
+    if (pass.length < 6) return fail('La nueva contraseña debe tener al menos 6 caracteres.');
+    if (pass !== confirm) return fail('Las contraseñas no coinciden.');
+    this._setLoading('otpBtn', true, 'Restableciendo...');
+    if (error) error.style.display = 'none';
+    try {
+      await this._app.resetPasswordWithOtp(email, code, pass);
+      this.switchTab('login');
+      const loginEmail = document.getElementById('loginEmail');
+      if (loginEmail) loginEmail.value = email;
+      this.showToast('Contraseña actualizada. Ya puedes iniciar sesión con tu nueva clave.', 'success', 6000);
+    } catch (err) {
+      fail(err.message);
+    } finally {
+      this._setLoading('otpBtn', false, 'Restablecer contraseña');
     }
   }
 

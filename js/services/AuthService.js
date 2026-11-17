@@ -376,6 +376,143 @@ class AuthService {
     }
   }
 
+  /* ── HU-21: recuperación con código OTP de 6 dígitos ─────── */
+
+  _otpKey(email) {
+    return `tuoficio_otp_${String(email || '').trim().toLowerCase()}`;
+  }
+
+  _randomOtp() {
+    try {
+      const values = new Uint32Array(1);
+      crypto.getRandomValues(values);
+      return String(100000 + (values[0] % 900000));
+    } catch (e) {
+      return String(Math.floor(100000 + Math.random() * 900000));
+    }
+  }
+
+  _readLocalOtp(email) {
+    try {
+      const raw = localStorage.getItem(this._otpKey(email));
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  _writeLocalOtp(email, value) {
+    try {
+      if (value) localStorage.setItem(this._otpKey(email), JSON.stringify(value));
+      else localStorage.removeItem(this._otpKey(email));
+    } catch (e) { /* almacenamiento no disponible */ }
+  }
+
+  _functionsCallable(name) {
+    if (typeof window === 'undefined' || !window.ChambaFunctions) return null;
+    try {
+      return window.ChambaFunctions.httpsCallable(name);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  _isFunctionsUnavailable(err) {
+    const code = String(err?.code || '');
+    return code === 'functions/not-found' ||
+      code === 'functions/unimplemented' ||
+      code === 'functions/unavailable' ||
+      code === 'functions/internal';
+  }
+
+  /** Envía un código de 6 dígitos al correo registrado (vence en 15 min). */
+  async requestPasswordOtp(email) {
+    const target = String(email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target)) {
+      throw new Error('Ingresa un correo electrónico válido.');
+    }
+
+    if (this.mode === 'local') {
+      const user = this._findLocalUserByEmail(target);
+      if (!user) throw new Error('No existe una cuenta con ese correo.');
+      const previous = this._readLocalOtp(target);
+      if (previous?.creado && Date.now() - previous.creado < 60 * 1000) {
+        throw new Error('Espera un minuto antes de solicitar otro código.');
+      }
+      const code = this._randomOtp();
+      this._writeLocalOtp(target, {
+        code,
+        creado: Date.now(),
+        expira: Date.now() + 15 * 60 * 1000,
+        intentos: 0,
+      });
+      return { demoCode: code, expiresInMinutes: 15 };
+    }
+
+    const callable = this._functionsCallable('requestPasswordOtp');
+    if (!callable) return this._passwordResetLinkFallback(target);
+    try {
+      const result = await callable({ email: target });
+      return result?.data || { ok: true };
+    } catch (e) {
+      if (this._isFunctionsUnavailable(e)) return this._passwordResetLinkFallback(target);
+      throw new Error(e.message || 'No se pudo enviar el código de recuperación.');
+    }
+  }
+
+  /** Respaldo cuando las Cloud Functions no están desplegadas. */
+  async _passwordResetLinkFallback(email) {
+    try {
+      await this._auth.sendPasswordResetEmail(email);
+      return { fallback: 'email-link' };
+    } catch (e) {
+      throw new Error(this._mapError(e));
+    }
+  }
+
+  /** Valida el código y guarda la nueva contraseña. */
+  async resetPasswordWithOtp(email, code, newPassword) {
+    const target = String(email || '').trim().toLowerCase();
+    const otp = String(code || '').trim();
+    if (!/^\d{6}$/.test(otp)) throw new Error('El código debe tener 6 dígitos.');
+    if (String(newPassword || '').length < 6) {
+      throw new Error('La nueva contraseña debe tener al menos 6 caracteres.');
+    }
+
+    if (this.mode === 'local') {
+      const user = this._findLocalUserByEmail(target);
+      if (!user) throw new Error('No existe una cuenta con ese correo.');
+      const record = this._readLocalOtp(target);
+      if (!record) throw new Error('Solicita un código nuevo para continuar.');
+      if (!record.expira || record.expira < Date.now()) {
+        this._writeLocalOtp(target, null);
+        throw new Error('El código venció. Solicita uno nuevo.');
+      }
+      if (Number(record.intentos) >= 5) {
+        this._writeLocalOtp(target, null);
+        throw new Error('Demasiados intentos. Solicita un código nuevo.');
+      }
+      if (record.code !== otp) {
+        this._writeLocalOtp(target, { ...record, intentos: Number(record.intentos || 0) + 1 });
+        throw new Error('El código no es correcto.');
+      }
+      await this._db.update(CHAMBAYA.COLLECTIONS.USERS, user.id, { passHash: demoHash(newPassword) });
+      this._writeLocalOtp(target, null);
+      return true;
+    }
+
+    const callable = this._functionsCallable('resetPasswordWithOtp');
+    if (!callable) {
+      throw new Error('La recuperación con código no está disponible. Usa el enlace enviado a tu correo.');
+    }
+    try {
+      await callable({ email: target, code: otp, newPassword });
+      return true;
+    } catch (e) {
+      throw new Error(e.message || 'No se pudo restablecer la contraseña.');
+    }
+  }
+
   async resendVerificationEmail() {
     if (this.mode === 'local') return true;
     if (this._auth.currentUser) await this._auth.currentUser.sendEmailVerification();

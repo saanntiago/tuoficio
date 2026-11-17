@@ -61,6 +61,33 @@ Abre `http://127.0.0.1:8123/app.html?emulator=1`. Esto no publica nada ni toca e
 
 Sube la carpeta completa sin `node_modules`, `scripts`, `.firebase` ni archivos de cuenta de servicio, y configura la raíz como directorio público. No hay variables de entorno obligatorias: las claves públicas de Firebase están en `js/config/firebase-config.js`. `firebase.json` ya excluye esos directorios si se publica con Firebase Hosting.
 
+## HU-21: recuperación de contraseña con código OTP
+
+La recuperación con código de 6 dígitos usa dos Cloud Functions (`functions/index.js`):
+
+- `requestPasswordOtp`: genera el código, lo guarda hasheado en `otp_resets` y lo envía por SMTP.
+- `resetPasswordWithOtp`: valida el código (15 minutos, máximo 5 intentos) y actualiza la contraseña en Firebase Auth.
+
+Despliegue:
+
+```powershell
+npm install --prefix functions
+firebase deploy --only functions,firestore:rules
+```
+
+Antes de desplegar, crea `functions/.env` con las credenciales SMTP (no se sube al repositorio):
+
+```text
+SMTP_HOST=smtp.tuproveedor.com
+SMTP_PORT=587
+SMTP_USER=no-reply@tuoficiocol.com
+SMTP_PASS=tu-clave-smtp
+SMTP_FROM="TuOficioCol <no-reply@tuoficiocol.com>"
+OTP_SECRET=una-cadena-larga-y-aleatoria
+```
+
+Sin SMTP configurado, en el emulador (`?emulator=1`) la función devuelve el código en la respuesta y la interfaz lo muestra como “Modo demostración”. En producción, si las funciones no están desplegadas, la app cae de forma controlada al enlace de recuperación de Firebase.
+
 ## Checklist antes de mostrar
 
 - [ ] `python -m http.server` sirve la carpeta correcta.
@@ -76,4 +103,5 @@ Sube la carpeta completa sin `node_modules`, `scripts`, `.firebase` ni archivos 
 - [ ] Reglas de Firestore y Storage desplegadas si se usa Firebase real.
 - [ ] Seed ejecutado y cuentas demo creadas en Firebase Auth.
 - [ ] Avatar, portafolio y verificación suben archivos a Storage.
+- [ ] Recuperación con código OTP: llega al correo, vence a los 15 minutos y permite iniciar sesión con la nueva clave.
 - [ ] Emulador probado con `?emulator=1` o Firestore real verificado.
