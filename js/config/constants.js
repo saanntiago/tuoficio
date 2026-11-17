@@ -177,6 +177,30 @@ function isMediaUrl(value, kind = 'image') {
   return pattern.test(raw);
 }
 
+/**
+ * Convierte la fecha (YYYY-MM-DD) y la hora (HH:mm) de una solicitud en un
+ * Date local. Devuelve null si falta algún dato o no es válido.
+ */
+function appointmentDateTime(fecha, hora) {
+  if (!fecha || !hora) return null;
+  const value = new Date(`${fecha}T${String(hora).slice(0, 5)}:00`);
+  return Number.isNaN(value.getTime()) ? null : value;
+}
+
+/**
+ * HU-09: la fecha y la hora del servicio deben ser futuras. No basta con que
+ * la fecha sea hoy: una hora que ya pasó tampoco se puede agendar.
+ */
+function validateAppointment(fecha, hora, now = new Date()) {
+  if (!fecha || !hora) return 'Indica la fecha y la hora del servicio.';
+  const value = appointmentDateTime(fecha, hora);
+  if (!value) return 'La fecha u hora del servicio no es válida.';
+  if (value.getTime() <= now.getTime()) {
+    return 'La fecha y la hora deben ser posteriores al momento actual.';
+  }
+  return '';
+}
+
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;

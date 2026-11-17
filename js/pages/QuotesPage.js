@@ -433,6 +433,9 @@ class QuotesPage extends BasePage {
     const address = document.getElementById('qAddress').value.trim();
     const budget = Number(document.getElementById('qBudget').value);
     if (!description || !fecha || !hora || !address || !budget) return fail('Completa descripción, fecha, hora, dirección y presupuesto.');
+    if (!(budget > 0)) return fail('El presupuesto estimado debe ser mayor que cero.');
+    const scheduleError = validateAppointment(fecha, hora);
+    if (scheduleError) return fail(scheduleError);
     this._setBusy(btn, true, 'Publicando...');
     try {
       await this._app.quotes.create({
@@ -446,7 +449,7 @@ class QuotesPage extends BasePage {
       await Promise.all(matches.map(w => this._app.notif.notify({
         usuarioId: w.id,
         title: 'Nueva solicitud cerca',
-        desc: `${this.user.name} busca ${service} en ${zone} para el ${formatDate(fecha)}.`,
+        desc: `${this.user.name} busca ${service} en ${address}, ${zone}, para el ${formatDate(fecha)} a las ${hora}.`,
         icon: 'fa-briefcase', color: '#3A3A38', bg: 'rgba(58,58,56,.1)', link: 'quotes',
       })));
       this._ui.closeModal();

@@ -432,6 +432,9 @@ class WorkersPage extends BasePage {
       this._ui.showToast(msg, 'error');
     };
     if (!description || !date || !time || !address || !budget) return fail('Completa descripción, fecha, hora, dirección y presupuesto.');
+    if (!(budget > 0)) return fail('El presupuesto estimado debe ser mayor que cero.');
+    const scheduleError = validateAppointment(date, time);
+    if (scheduleError) return fail(scheduleError);
     this._setBusy(btn, true, 'Enviando...');
     try {
       const id = await this._app.quotes.sendSuggestion({
@@ -449,7 +452,7 @@ class WorkersPage extends BasePage {
       await this._app.notif.notify({
         usuarioId: workerId,
         title: 'Nueva solicitud directa',
-        desc: `${this.user.name} solicita ${service} en ${zone} para el ${formatDate(date)} a las ${time}.`,
+        desc: `${this.user.name} solicita ${service} en ${address}, ${zone}, para el ${formatDate(date)} a las ${time}.`,
         icon: 'fa-calendar-plus', color: '#4E7A5C', bg: 'rgba(78,122,92,.12)', link: 'quotes',
       });
       this._ui.closeModal();

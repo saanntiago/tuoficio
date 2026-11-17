@@ -352,8 +352,17 @@ class QuoteService {
   }
 
   async create(data) {
+    // HU-09: fecha, hora, dirección y presupuesto son obligatorios y la
+    // cita debe estar en el futuro, incluso si la fecha es hoy.
+    const scheduleError = validateAppointment(data.fecha, data.hora);
+    if (scheduleError) throw new Error(scheduleError);
+    if (!String(data.address || '').trim()) throw new Error('Indica la dirección donde se realizará el servicio.');
+    if (!(Number(data.budget) > 0)) throw new Error('Ingresa un presupuesto estimado mayor que cero.');
+    if (!String(data.description || '').trim()) throw new Error('Describe el trabajo que necesitas.');
     return this._db.create(this._db.COLLECTIONS.QUOTES, {
       ...data,
+      address: String(data.address).trim(),
+      budget: Number(data.budget),
       estado: CHAMBAYA.QUOTE_STATUS.OPEN,
       status: CHAMBAYA.QUOTE_STATUS.OPEN,
       ofertasCount: 0,
@@ -423,6 +432,13 @@ class QuoteService {
   /* ── Sugerencias directas de un cliente a un técnico ─────── */
 
   async sendSuggestion({ employerId, employerName, workerId, service, description, zone, budget, address, fecha, hora }) {
+    // HU-09: la solicitud directa lleva fecha, hora, dirección y presupuesto.
+    const scheduleError = validateAppointment(fecha, hora);
+    if (scheduleError) throw new Error(scheduleError);
+    if (!String(address || '').trim()) throw new Error('Indica la dirección donde se realizará el servicio.');
+    if (!(Number(budget) > 0)) throw new Error('Ingresa un presupuesto estimado mayor que cero.');
+    if (!String(description || '').trim()) throw new Error('Describe el trabajo que necesitas.');
+    if (!workerId) throw new Error('Selecciona el técnico que recibirá la solicitud.');
     const id = await this._db.create(this._db.COLLECTIONS.SUGGESTIONS, {
       empleadorId: employerId,
       employerName: employerName,
@@ -430,10 +446,10 @@ class QuoteService {
       service,
       description,
       zone,
-      address: address || zone,
-      fecha: fecha || '',
-      hora: hora || '',
-      budget,
+      address: String(address).trim(),
+      fecha,
+      hora,
+      budget: Number(budget),
       status: 'Enviada',
       estado: 'Enviada',
     });
