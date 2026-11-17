@@ -67,9 +67,7 @@ class PortfolioPage extends BasePage {
           <span><i class="fas fa-calendar"></i> ${formatDate(item.fecha)}</span>
           ${video ? '<span><i class="fas fa-video"></i> Video adjunto</span>' : ''}
         </div>
-        ${video ? (String(video).startsWith('data:video')
-          ? `<video class="portfolio-video" src="${escapeHtml(video)}" controls preload="metadata"></video>`
-          : `<a class="btn btn-secondary btn-sm" href="${escapeHtml(video)}" target="_blank" rel="noopener"><i class="fas fa-play"></i> Ver video del trabajo</a>`) : ''}
+        ${video ? videoEmbedHtml(video, item.titulo || 'Video del trabajo') : ''}
       </div>
     </article>`;
   }
@@ -166,6 +164,9 @@ class PortfolioPage extends BasePage {
 
     if (!title) return fail('Escribe un título para el trabajo.');
     if (!beforeFile || !afterFile) return fail('Adjunta la foto del antes y la del después.');
+    if (videoUrl && !/^https?:\/\//i.test(videoUrl)) {
+      return fail('El enlace del video debe comenzar por http:// o https://.');
+    }
 
     this._setBusy(btn, true, 'Subiendo fotos...');
     this._app.storage.lastError = '';

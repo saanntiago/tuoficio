@@ -301,6 +301,17 @@
 .portfolio-meta { display: flex; gap: 14px; font-size: 10.5px; color: var(--text4); margin-top: auto; padding-top: 6px; }
 .portfolio-meta i { color: var(--primary); margin-right: 3px; }
 .portfolio-video { width: 100%; border-radius: 10px; margin-top: 8px; background: #000; max-height: 220px; }
+.portfolio-thumb-wrap { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.portfolio-video-btn {
+  border: 0; background: rgba(78,122,92,.1); color: var(--primary); cursor: pointer;
+  font-size: 10.5px; font-weight: 700; padding: 5px 7px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.portfolio-video-btn:hover { background: rgba(78,122,92,.18); }
+.portfolio-video-modal { margin: 4px 0 16px; }
+.video-embed { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: #000; margin-top: 8px; }
+.video-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.video-fallback { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 11px; color: var(--text3); text-decoration: underline; }
 .portfolio-empty-art { text-align: center; padding: 20px 0 0; font-size: 52px; color: var(--border); }
 .upload-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .upload-box {

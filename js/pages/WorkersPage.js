@@ -323,10 +323,13 @@ class WorkersPage extends BasePage {
 
         ${portfolio.length ? `<div class="detail-section"><h3>Portafolio (antes y después)</h3>
           <div class="portfolio-strip">${portfolio.slice(0, 4).map(p => `
-            <button class="portfolio-thumb" onclick="ui.openImage('${String(p.despues || p.antes || '').replace(/'/g, '%27')}', '${escapeHtml(p.titulo || '')}')">
-              <img src="${escapeHtml(p.despues || p.antes || placeholderImage('Trabajo'))}" alt="${escapeHtml(p.titulo || '')}"/>
-              <span>${escapeHtml(p.titulo || 'Trabajo')}</span>
-            </button>`).join('')}</div>
+            <div class="portfolio-thumb-wrap">
+              <button class="portfolio-thumb" onclick="ui.openImage('${String(p.despues || p.antes || '').replace(/'/g, '%27')}', '${escapeHtml(p.titulo || '')}')">
+                <img src="${escapeHtml(p.despues || p.antes || placeholderImage('Trabajo'))}" alt="${escapeHtml(p.titulo || '')}"/>
+                <span>${escapeHtml(p.titulo || 'Trabajo')}</span>
+              </button>
+              ${p.video ? `<button class="portfolio-video-btn" onclick="ui._getPage('workers').openPortfolioVideo('${String(p.video).replace(/'/g, '%27')}', '${escapeHtml(p.titulo || 'Video del trabajo')}')"><i class="fas fa-play"></i> Ver video</button>` : ''}
+            </div>`).join('')}</div>
           ${w.portfolioCount > 4 ? `<p class="muted small">y ${w.portfolioCount - 4} trabajos más en su perfil público.</p>` : ''}
         </div>` : ''}
 
@@ -362,6 +365,17 @@ class WorkersPage extends BasePage {
   async toggleFavorite(workerId, btn) {
     const added = await this._toggleFavorite(workerId);
     btn?.classList.toggle('on', added);
+  }
+
+  /** HU-04: el cliente reproduce el video del proyecto sin salir del perfil. */
+  openPortfolioVideo(url, title = 'Video del trabajo') {
+    this._ui.openModal(`
+      <div class="modal-header">
+        <div class="modal-title">${escapeHtml(title)}</div>
+        <button class="modal-close" onclick="ui.closeModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="portfolio-video-modal">${videoEmbedHtml(url, title)}</div>
+      <div class="modal-actions"><button class="btn btn-secondary" onclick="ui.closeModal()">Cerrar</button></div>`, { wide: true });
   }
 
   async shareById(workerId) {

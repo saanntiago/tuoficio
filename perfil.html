@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <link rel="stylesheet" href="css/design-system.css">
-    <link rel="stylesheet" href="css/public.css">
+    <link rel="stylesheet" href="css/public.css?v=20261116-1">
 </head>
 <body class="pub-body">
 
@@ -71,12 +71,12 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="js/config/constants.js"></script>
+    <script src="js/config/constants.js?v=20261116-1"></script>
     <script src="js/data/seed.js"></script>
     <script src="js/services/LocalStore.js"></script>
     <script src="js/config/firebase-config.js?v=20261027-1"></script>
     <script src="js/services/DatabaseService.js"></script>
-    <script src="js/public.js?v=20261027-3"></script>
+    <script src="js/public.js?v=20261116-1"></script>
     <script>
       const ProfilePage = (() => {
         let worker = null;
@@ -128,6 +128,7 @@
                 <h4>${title}</h4>
                 ${desc ? `<p>${desc}</p>` : ''}
                 ${p.fecha ? `<time datetime="${escapeHtml(p.fecha)}"><i class="fa-regular fa-calendar"></i> ${formatDate(p.fecha)}</time>` : ''}
+                ${p.video ? `<div class="pf-video">${videoEmbedHtml(p.video, p.titulo || 'Video del trabajo')}</div>` : ''}
               </div>
             </article>`;
           }).join('');

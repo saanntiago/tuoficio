@@ -308,9 +308,26 @@ class WorkerService {
     return (w?.portafolio || []).slice().sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
   }
 
-  async addPortfolioItem(workerId, item) {
+  async addPortfolioItem(workerId, item = {}) {
+    // HU-04: cada proyecto exige evidencia visual del antes y del después.
+    const titulo = String(item.titulo || '').trim();
+    if (!titulo) throw new Error('Escribe un título para el trabajo.');
+    if (!isMediaUrl(item.antes) || !isMediaUrl(item.despues)) {
+      throw new Error('Cada proyecto debe incluir la foto del antes y la del después.');
+    }
+    if (item.video && !isMediaUrl(item.video, 'video') && !/^https?:\/\//i.test(String(item.video))) {
+      throw new Error('El enlace del video no es válido.');
+    }
     const w = await this._db.get(this._db.COLLECTIONS.WORKERS, workerId) || {};
-    const portafolio = [...(w.portafolio || []), { ...item, id: `pf-${Date.now().toString(36)}` }];
+    const portafolio = [...(w.portafolio || []), {
+      titulo,
+      descripcion: String(item.descripcion || '').trim().slice(0, 300),
+      fecha: item.fecha || new Date().toISOString().slice(0, 10),
+      antes: item.antes,
+      despues: item.despues,
+      video: String(item.video || '').trim(),
+      id: `pf-${Date.now().toString(36)}`,
+    }];
     await this._db.set(this._db.COLLECTIONS.WORKERS, workerId, { portafolio });
     return portafolio;
   }

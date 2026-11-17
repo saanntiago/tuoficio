@@ -145,6 +145,38 @@ function tradeIcon(trade) {
   return CHAMBAYA.TRADE_ICONS[trade] || 'fa-screwdriver-wrench';
 }
 
+/**
+ * Devuelve el HTML reproducible de un video del portafolio (HU-04).
+ * Acepta enlaces de YouTube/Vimeo, URLs de Firebase Storage y Data URLs.
+ * El cliente ve el video incrustado, sin salir de la plataforma.
+ */
+function videoEmbedHtml(url, title = 'Video del trabajo') {
+  const raw = String(url || '').trim();
+  if (!raw) return '';
+  const safeTitle = escapeHtml(title);
+  const youtube = raw.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/i);
+  if (youtube) {
+    return `<div class="video-embed"><iframe src="https://www.youtube.com/embed/${escapeHtml(youtube[1])}" title="${safeTitle}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+  }
+  const vimeo = raw.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
+  if (vimeo) {
+    return `<div class="video-embed"><iframe src="https://player.vimeo.com/video/${escapeHtml(vimeo[1])}" title="${safeTitle}" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
+  }
+  const safeUrl = escapeHtml(raw);
+  return `<video class="portfolio-video" src="${safeUrl}" controls preload="metadata" playsinline></video>
+    <a class="video-fallback" href="${safeUrl}" target="_blank" rel="noopener"><i class="fas fa-up-right-from-square"></i> Abrir video en otra pestaña</a>`;
+}
+
+/** Valida que una URL de imagen/video sea reproducible en la app. */
+function isMediaUrl(value, kind = 'image') {
+  const raw = String(value || '').trim();
+  if (!raw) return false;
+  const pattern = kind === 'video'
+    ? /^(https?:\/\/|data:video\/|blob:)/i
+    : /^(https?:\/\/|data:image\/|blob:)/i;
+  return pattern.test(raw);
+}
+
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
